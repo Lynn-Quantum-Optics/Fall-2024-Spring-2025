@@ -1,6 +1,8 @@
 .DS_Store
 py-venv/
-__pycache__/
+*.pyc
 testing_experiment/
-finding_states/
 calibration/
+
+finding_states/paper_states
+finding_states/generated_states_we_dont_care_about
