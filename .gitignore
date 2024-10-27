@@ -1,0 +1,6 @@
+.DS_Store
+py-venv/
+__pycache__/
+testing_experiment/
+finding_states/
+calibration/
