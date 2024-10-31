@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize, approx_fprime
 from uncertainties import unumpy as unp
+from states_and_gates import *
 
 
 def adjoint(state):
@@ -26,21 +27,6 @@ def partial_transpose(rho, subsys='B'):
     elif subsys=='A':
         return PT.T
 
-
-# Pauli Gates
-PAULI_Z = np.array([[1,0], [0,-1]])
-PAULI_X = np.array([[0,1], [1, 0]])
-PAULI_Y = np.array([[0, -1j], [1j, 0]])
-
-# Bell States
-PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)])
-PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)])
-PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0])
-PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0])
-
-# Riccardi Witnesses
-W1 = partial_transpose(PHI_P * adjoint(PHI_P))
-
 def rotate(W):
     M = W @ W
 
@@ -48,11 +34,17 @@ def rotate(W):
 
     return M
 
-def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, expt_purity = None, model=None, do_W = False, do_richard = False, UV_HWP_offset=None, angles = None, num_reps = 50, optimize = True, gd=True, zeta=0.7, ads_test=False, return_all=False, return_params=False, return_lynn=False, return_lynn_only=False):
+def gradient_descent(Ws):
+    return 0
+
+def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, 
+                      expt_purity = None, model=None, do_W = False, do_richard = False, 
+                      UV_HWP_offset=None, angles = None, num_reps = 50, optimize = True, 
+                      gd=True, zeta=0.7, ads_test=False, return_all=False, return_params=False):
     ''' Computes the minimum of the 6 Ws and the minimum of the 3 triples of the 9 W's. 
         Params:
             rho: the density matrix
-            counts: raw unp array of counts and unc
+            counts: raw np array of counts and uncertainties
             expt: bool, whether to compute the Ws assuming input is experimental data
             verbose: Whether to return which W/W' are minimal.
             do_stokes: bool, whether to compute 
@@ -392,11 +384,6 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
 
     # Using theoretical data
     else: # use operators instead like in eritas's matlab code
-        # bell states #
-        PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)]).reshape((4,1))
-        PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)]).reshape((4,1))
-        PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0]).reshape((4,1))
-        PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0]).reshape((4,1))
         # column vectors
         HH = np.array([1, 0, 0, 0]).reshape((4,1))
         HV = np.array([0, 1, 0, 0]).reshape((4,1))
@@ -552,14 +539,6 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             return get_witness(phi)
         
 
-        def get_lynn():
-            # 'lynn' was a special quantum state we haven't touched in a while
-            # TODO: delete this and all the other lynn stuff
-            return 1/5*(2*HH +2*np.exp(1j*np.pi/4)*  HV +  np.exp(1j*np.pi/4)*VH +4*VV) 
-        
-        if return_lynn_only:
-            return get_witness(get_lynn())
-        # get the witness values by minimizing the witness function
         if not(ads_test): 
             all_W = [get_W1,get_W2, get_W3, get_W4, get_W5, get_W6, get_Wp1, get_Wp2, get_Wp3, get_Wp4, get_Wp5, get_Wp6, get_Wp7, get_Wp8, get_Wp9, get_w_pp_a1, get_w_pp_a2, get_w_pp_b1,  get_w_pp_b2]
             W_expec_vals = []
@@ -750,8 +729,6 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                 Wp_t2_param = [x for _,x in sorted(zip(W_expec_vals_ls[9:12], min_params[9:12]))][0]
                 Wp_t3_param = [x for _,x in sorted(zip(W_expec_vals_ls[12:15], min_params[12:15]))][0]
 
-            # calculate lynn
-            W_lynn = get_witness(get_lynn())
 
             if not(return_all):
                 if verbose:
@@ -779,10 +756,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                 if return_params:
                     return W_min, Wp_t1, Wp_t2, Wp_t3, W_param, Wp_t1_param, Wp_t2_param, Wp_t3_param
                 else:
-                    if return_lynn:
-                        return W_min, Wp_t1, Wp_t2, Wp_t3, W_lynn
-                    else:
-                        return W_min, Wp_t1, Wp_t2, Wp_t3
+                    return W_min, Wp_t1, Wp_t2, Wp_t3
             else:
                 if return_params:
                     return W_expec_vals, min_params
