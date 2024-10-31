@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import minimize, approx_fprime
 from uncertainties import unumpy as unp
 
+
 def adjoint(state):
     ''' Returns the adjoint of a state vector. For a np.matrix, can use .H'''
     return np.conjugate(state).T
@@ -24,6 +25,28 @@ def partial_transpose(rho, subsys='B'):
         return PT
     elif subsys=='A':
         return PT.T
+
+
+# Pauli Gates
+PAULI_Z = np.array([[1,0], [0,-1]])
+PAULI_X = np.array([[0,1], [1, 0]])
+PAULI_Y = np.array([[0, -1j], [1j, 0]])
+
+# Bell States
+PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)])
+PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)])
+PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0])
+PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0])
+
+# Riccardi Witnesses
+W1 = partial_transpose(PHI_P * adjoint(PHI_P))
+
+def rotate(W):
+    M = W @ W
+
+    # NOTE: np.kron does tensor product
+
+    return M
 
 def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, expt_purity = None, model=None, do_W = False, do_richard = False, UV_HWP_offset=None, angles = None, num_reps = 50, optimize = True, gd=True, zeta=0.7, ads_test=False, return_all=False, return_params=False, return_lynn=False, return_lynn_only=False):
     ''' Computes the minimum of the 6 Ws and the minimum of the 3 triples of the 9 W's. 
@@ -387,32 +410,40 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             W = phi * adjoint(phi)
             W = partial_transpose(W) # take partial transpose
             return np.real(np.trace(W @ rho))
+        
+        
+        
+        def witness_expectation(phi):
+            return np.real(np.trace(W @ rho))
+        
+        def get_W_matrix(state):
+            return partial_transpose(state * adjoint(state))
 
         
         # Only difference for witnesses is how they are calculated
 
         ## ------ for W ------ ##
-        def get_W1(param):
+        def W1(param):
             a,b = np.cos(param), np.sin(param)
             phi1 = a*PHI_P + b*PHI_M
-            return get_witness(phi1)
-        def get_W2(param):
+            return get_W_matrix
+        def W2(param):
             a,b = np.cos(param), np.sin(param)
             phi2 = a*PSI_P + b*PSI_M
             return get_witness(phi2)
-        def get_W3(param):
+        def W3(param):
             a,b = np.cos(param), np.sin(param)
             phi3 = a*PHI_P + b*PSI_P
             return get_witness(phi3)
-        def get_W4(param):
+        def W4(param):
             a,b = np.cos(param), np.sin(param)
             phi4 = a*PHI_M + b*PSI_M
             return get_witness(phi4)
-        def get_W5(param):
+        def W5(param):
             a,b = np.cos(param), np.sin(param)
             phi5 = a*PHI_P + 1j*b*PSI_M
             return get_witness(phi5)
-        def get_W6(param):
+        def W6(param):
             a,b = np.cos(param), np.sin(param)
             phi6 = a*PHI_M + 1j*b*PSI_P
             return get_witness(phi6)
