@@ -398,8 +398,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             W = partial_transpose(W) # take partial transpose
             return np.real(np.trace(W @ rho))
         
-        
-        
+
         def witness_expectation(phi):
             return np.real(np.trace(W @ rho))
         
@@ -410,27 +409,27 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
         # Only difference for witnesses is how they are calculated
 
         ## ------ for W ------ ##
-        def W1(param):
+        def get_W1(param):
             a,b = np.cos(param), np.sin(param)
             phi1 = a*PHI_P + b*PHI_M
             return get_W_matrix
-        def W2(param):
+        def get_W2(param):
             a,b = np.cos(param), np.sin(param)
             phi2 = a*PSI_P + b*PSI_M
             return get_witness(phi2)
-        def W3(param):
+        def get_W3(param):
             a,b = np.cos(param), np.sin(param)
             phi3 = a*PHI_P + b*PSI_P
             return get_witness(phi3)
-        def W4(param):
+        def get_W4(param):
             a,b = np.cos(param), np.sin(param)
             phi4 = a*PHI_M + b*PSI_M
             return get_witness(phi4)
-        def W5(param):
+        def get_W5(param):
             a,b = np.cos(param), np.sin(param)
             phi5 = a*PHI_P + 1j*b*PSI_M
             return get_witness(phi5)
-        def W6(param):
+        def get_W6(param):
             a,b = np.cos(param), np.sin(param)
             phi6 = a*PHI_M + 1j*b*PSI_P
             return get_witness(phi6)
