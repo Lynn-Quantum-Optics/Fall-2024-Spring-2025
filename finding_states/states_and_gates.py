@@ -26,15 +26,15 @@ def R_y(theta):
 
 def rotate_z(m, theta):
     """Rotate matrix m by theta about the z axis"""
-    return R_z(theta) @ m @ R_z(-theta)
+    return R_z(theta) @ m @ R_z(theta).getH()
 
 def rotate_x(m, theta):
     """Rotate matrix m by theta about the x axis"""
-    return R_x(theta) @ m @ R_x(-theta)
+    return R_x(theta) @ m @ R_x(theta).getH()
 
 def rotate_y(m, theta):
     """Rotate matrix m by theta about the y axis"""
-    return R_y(theta) @ m @ R_y(-theta)
+    return R_y(theta) @ m @ R_y(theta).getH()
 
 ##########
 ## TESTS
