@@ -2,11 +2,8 @@ import numpy as np
 from scipy.optimize import minimize, approx_fprime
 from uncertainties import unumpy as unp
 from states_and_gates import *
+import operations as op
 
-
-def adjoint(state):
-    ''' Returns the adjoint of a state vector. For a np.matrix, can use .H'''
-    return np.conjugate(state).T
 
 def partial_transpose(rho, subsys='B'):
     ''' Helper function to compute the partial transpose of a density matrix. Useful for the Peres-Horodecki criterion, which states that if the partial transpose of a density matrix has at least one negative eigenvalue, then the state is entangled.
@@ -394,7 +391,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
         # take rank 1 projector and return witness
         def get_witness(phi):
             ''' Helper function to compute the witness operator for a given state and return trace(W*rho) for a given state rho.'''
-            W = phi * adjoint(phi)
+            W = phi * op.adjoint(phi)
             W = partial_transpose(W) # take partial transpose
             return np.real(np.trace(W @ rho))
         
@@ -403,7 +400,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             return np.real(np.trace(W @ rho))
         
         def get_W_matrix(state):
-            return partial_transpose(state * adjoint(state))
+            return partial_transpose(state * op.adjoint(state))
 
         
         # Only difference for witnesses is how they are calculated
