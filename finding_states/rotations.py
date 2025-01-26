@@ -4,26 +4,6 @@ from uncertainties import unumpy as unp
 from states_and_gates import *
 import operations as op
 
-
-def partial_transpose(rho, subsys='B'):
-    ''' Helper function to compute the partial transpose of a density matrix. Useful for the Peres-Horodecki criterion, which states that if the partial transpose of a density matrix has at least one negative eigenvalue, then the state is entangled.
-    Params:
-        rho: density matrix
-        subsys: which subsystem to compute partial transpose wrt, i.e. 'A' or 'B'
-    '''
-    # decompose rho into blocks
-    b1 = rho[:2, :2]
-    b2 = rho[:2, 2:]
-    b3 = rho[2:, :2]
-    b4 = rho[2:, 2:]
-
-    PT = np.matrix(np.block([[b1.T, b2.T], [b3.T, b4.T]]))
-
-    if subsys=='B':
-        return PT
-    elif subsys=='A':
-        return PT.T
-
 def rotate(W):
     M = W @ W
 
@@ -31,32 +11,39 @@ def rotate(W):
 
     return M
 
-def gradient_descent(Ws):
+# Look into sklearn SGDRegressor or tensorflow
+def gradient_descent(Ws, zeta=0.7):
+    """
+    Does gradient descent optimization
+
+    Params:
+        Ws:   the witnesses to optimize
+        zeta: learning rate 
+    """
     return 0
 
 def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, 
                       expt_purity = None, model=None, do_W = False, do_richard = False, 
                       UV_HWP_offset=None, angles = None, num_reps = 50, optimize = True, 
-                      gd=True, zeta=0.7, ads_test=False, return_all=False, return_params=False):
+                      gd=True, ads_test=False, return_all=False, return_params=False):
     ''' Computes the minimum of the 6 Ws and the minimum of the 3 triples of the 9 W's. 
         Params:
             rho: the density matrix
-            counts: raw np array of counts and uncertainties
+            counts: raw np array of photon counts and uncertainties
             expt: bool, whether to compute the Ws assuming input is experimental data
             verbose: Whether to return which W/W' are minimal.
-            do_stokes: bool, whether to compute 
-            do_counts: use the raw definition in terms of counts
+            ?do_stokes: bool, whether to compute (stokes parameters?)
+            ?do_counts: use the raw definition in terms of counts
             expt_purity: the experimental purity of the state, which defines the noise level: 1 - purity.
             model: which model to correct for noise; see det_noise in process_expt.py for more info
-            do_W: bool, whether to use W calc in loss for noise
+            ?do_W: bool, whether to use W calc in loss for noise
             UV_HWP_offset: see description in det_noise in process_expt.py
             model_path: path to noise model csvs.
-            angles: angles of eta, chi for E0 states to adjust theory
+            ?angles: angles of eta, chi for E0 states to adjust theory
             num_reps: int, number of times to run the optimization
             optimize: bool, whether to optimize the Ws with random or gradient descent or to just check bounds
             gd: bool, whether to use gradient descent or brute random search
-            zeta: learning rate for gradient descent
-            ads_test: bool, whether to return w2 expec and sin (theta) for the amplitude damped states
+            ?ads_test: bool, whether to return w2 expec and sin (theta) for the amplitude damped states
             return_all: bool, whether to return all the Ws or just the min of the 6 and the min of the 3 triples
             return_params: bool, whether to return the params that give the min of the 6 and the min of the 3 triples
     '''
@@ -392,15 +379,12 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
         def get_witness(phi):
             ''' Helper function to compute the witness operator for a given state and return trace(W*rho) for a given state rho.'''
             W = phi * op.adjoint(phi)
-            W = partial_transpose(W) # take partial transpose
-            return np.real(np.trace(W @ rho))
+            W = op.partial_transpose(W) # take partial transpose
+            return np.real(np.trace(W @ rho)) # minimizing this gives the expectation value of witness
         
-
-        def witness_expectation(phi):
-            return np.real(np.trace(W @ rho))
         
         def get_W_matrix(state):
-            return partial_transpose(state * op.adjoint(state))
+            return op.partial_transpose(state * op.adjoint(state))
 
         
         # Only difference for witnesses is how they are calculated
@@ -409,7 +393,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
         def get_W1(param):
             a,b = np.cos(param), np.sin(param)
             phi1 = a*PHI_P + b*PHI_M
-            return get_W_matrix
+            return get_W_matrix(phi1)
         def get_W2(param):
             a,b = np.cos(param), np.sin(param)
             phi2 = a*PSI_P + b*PSI_M
