@@ -12,37 +12,36 @@ def rotate(W):
     return M
 
 # Look into sklearn SGDRegressor or tensorflow
-def gradient_descent(Ws, zeta=0.7):
+def gradient_descent(Ws, zeta=0.7, num_reps = 50):
     """
     Does gradient descent optimization
 
     Params:
         Ws:   the witnesses to optimize
         zeta: learning rate 
+        num_reps: int, number of times to run the optimization
     """
     return 0
 
 def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, 
-                      expt_purity = None, model=None, do_W = False, do_richard = False, 
-                      UV_HWP_offset=None, angles = None, num_reps = 50, optimize = True, 
-                      gd=True, ads_test=False, return_all=False, return_params=False):
+                      expt_purity = None, model=None, optimize = True, gd=True, ads_test=False, return_all=False, 
+                      return_params=False):
     ''' Computes the minimum of the 6 Ws and the minimum of the 3 triples of the 9 W's. 
         Params:
             rho: the density matrix
             counts: raw np array of photon counts and uncertainties
-            expt: bool, whether to compute the Ws assuming input is experimental data
+            -------expt: bool, whether to compute the Ws assuming input is experimental data
             verbose: Whether to return which W/W' are minimal.
-            ?do_stokes: bool, whether to compute (stokes parameters?)
-            ?do_counts: use the raw definition in terms of counts
+            do_stokes: bool, whether to compute stokes parameters
+            -------do_counts: use the raw definition in terms of counts 
             expt_purity: the experimental purity of the state, which defines the noise level: 1 - purity.
-            model: which model to correct for noise; see det_noise in process_expt.py for more info
-            ?do_W: bool, whether to use W calc in loss for noise
-            UV_HWP_offset: see description in det_noise in process_expt.py
+            ?model: which model to correct for noise; see det_noise in process_expt.py for more info
             model_path: path to noise model csvs.
-            ?angles: angles of eta, chi for E0 states to adjust theory
-            num_reps: int, number of times to run the optimization
-            optimize: bool, whether to optimize the Ws with random or gradient descent or to just check bounds
+
+            # rewrite
+            optimize: bool, whether to optimize the Ws or to just check bounds
             gd: bool, whether to use gradient descent or brute random search
+
             ?ads_test: bool, whether to return w2 expec and sin (theta) for the amplitude damped states
             return_all: bool, whether to return all the Ws or just the min of the 6 and the min of the 3 triples
             return_params: bool, whether to return the params that give the min of the 6 and the min of the 3 triples
@@ -51,15 +50,6 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
     if expt and counts is not None:
         do_counts = True
     # if wanting to account for experimental purity, add noise to the density matrix for adjusted theoretical purity calculation
-
-    # automatic correction is depricated; send the theoretical rho after whatever correction you want to this function
-
-        # if expt_purity is not None and angles is not None: # this rho is theoretical
-        #     if model is None:
-        #         rho = adjust_rho(rho, angles, expt_purity)
-        #     else:
-        #         rho = load_saved_get_E0_rho_c(rho, angles, expt_purity, model, UV_HWP_offset, do_W = do_W, do_richard = do_richard)
-        #     # rho = adjust_rho(rho, angles, expt_purity)
 
     # With experimental data
     if do_counts:
@@ -132,6 +122,13 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             w = func(params, expec_vals)
             return unp.nominal_values(w)
 
+
+        #### TODO: Rewrite optimization
+        # 
+        # 1) use a set of random initial guess (x0,x1,x2) as starting points (for scipy minimze)
+        # 2) choose best random initial guess (via scipy minimization)
+        # 3) use gradient descent optimization (look into tensorflow or scipy)
+
         # now perform optimization; break into three groups based on the number of params to optimize
         all_W = [get_W1,get_W2, get_W3, get_W4, get_W5, get_W6, get_Wp1, get_Wp2, get_Wp3, get_Wp4, get_Wp5, get_Wp6, get_Wp7, get_Wp8, get_Wp9]
         W_expec_vals = []
@@ -196,6 +193,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                                 else:
                                     x0 = x0 - zeta*grad
                         else:
+                            # choose another random initial guess
                             x0 = [np.random.rand()*np.pi]
 
 
@@ -237,6 +235,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                 else:
                     w_min_val = w1_val
                     w_min_params = w1_params
+                
                 if optimize:
                     isi = 0 # index since last improvement
                     for _ in range(num_reps): # repeat 10 times and take the minimum
