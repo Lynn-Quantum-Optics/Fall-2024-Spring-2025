@@ -619,31 +619,26 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                     w_min_params = w2_params
 
                 # Use best initial guess in Gradient descent to minimze Ws further
-                if optimize:
-                    isi = 0 # index since last improvement
-                    for _ in range(num_reps): # repeat 10 times and take the minimum
-                        if gd:
-                            if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
-                                x0 = [np.random.rand()*np.pi]
-                            else:
-                                grad = approx_fprime(x0, min_W_val, 1e-6)
-                                if np.all(grad < 1e-5*np.ones(len(grad))):
-                                    break
-                                else:
-                                    x0 = x0 - zeta*grad
+                isi = 0 # index since last improvement
+                for _ in range(num_reps): # repeat 10 times and take the minimum
+                    if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
+                        x0 = [np.random.rand()*np.pi]
+                    else:
+                        grad = approx_fprime(x0, min_W_val, 1e-6)
+                        if np.all(grad < 1e-5*np.ones(len(grad))):
+                            break
                         else:
-                            x0 = [np.random.rand()*np.pi]
+                            x0 = x0 - zeta*grad
 
-
-                        w_val = min_W_val(x0)
-                        w_params = min_W_params(x0)
+                w_val = min_W_val(x0)
+                w_params = min_W_params(x0)
                         
-                        if w_val < w_min_val:
-                            w_min_val = w_val
-                            w_min_params = w_params
-                            isi=0
-                        else:
-                            isi+=1
+                if w_val < w_min_val:
+                    w_min_val = w_val
+                    w_min_params = w_params
+                    isi=0
+                else:
+                    isi+=1
             
             # These witnesses have three parameters to be minimized (theta, alpha, and beta)
             elif i==8 or i==11 or i==14:
@@ -725,30 +720,27 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                 else:
                     w_min_val = w1_val
                     w_min_params = w1_params
-                if optimize:
-                    isi = 0 # index since last improvement
-                    for _ in range(num_reps): # repeat 10 times and take the minimum
-                        if gd:
-                            if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
-                                x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
-                            else:
-                                grad = approx_fprime(x0, min_W_val, 1e-6)
-                                if np.all(grad < 1e-5*np.ones(len(grad))):
-                                    x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
-                                else:
-                                    x0 = x0 - zeta*grad
-                        else:
-                            x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
 
-                        w_val = min_W_val(x0)
-                        w_params = min_W_params(x0)
-                        
-                        if w_val < w_min_val:
-                            w_min_val = w_val
-                            w_min_params = w_params
-                            isi=0
+                isi = 0 # index since last improvement
+                for _ in range(num_reps): # repeat 10 times and take the minimum
+                    if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
+                        x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
+                    else:
+                        grad = approx_fprime(x0, min_W_val, 1e-6)
+                        if np.all(grad < 1e-5*np.ones(len(grad))):
+                            x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
                         else:
-                            isi+=1
+                            x0 = x0 - zeta*grad
+
+                w_val = min_W_val(x0)
+                w_params = min_W_params(x0)
+                        
+                if w_val < w_min_val:
+                    w_min_val = w_val
+                    w_min_params = w_params
+                    isi=0
+                else:
+                    isi+=1
 
             if expt: # automatically calculate uncertainty
                 W_expec_vals.append(W(w_min_params, counts))
