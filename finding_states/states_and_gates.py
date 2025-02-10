@@ -13,13 +13,13 @@ PAULI_X = np.array([[0,1], [1, 0]])
 PAULI_Y = np.array([[0, -1j], [1j, 0]])
 
 ### Bell States ###
-PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)])
-PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)])
-PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0])
-PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0])
+PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)]).reshape((4,1))
+PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)]).reshape((4,1))
+PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0]).reshape((4,1))
+PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0]).reshape((4,1))
 
 
-### Rotation Matrices & Functions ###
+### Rotation Matrices ###
 #
 # Params: 
 #  theta - the angle to rotate by
@@ -39,57 +39,116 @@ def R_y(theta):
 ### Riccardi witnesses (W) ###
 #
 # Params: 
-#  param - the parameter for the rank-1 projectors
-#  expt  - bool, whether to use experimental data or not  
-def W1(param, expt=False):
+#  param  - the parameter for the rank-1 projectors
+#  counts - raw np array of photon counts and uncertainties to use 
+#              for experimental calculations
+
+## Keep track of count indices
+# int to str, i.e. COUNT[0] = 'HH'
+COUNTS = ['HH', 'HV', 'HD', 'HA', 'HR', 'HL', 'VH', 'VV', 'VD', 'VA', 'VR', 'VL', 
+          'DH', 'DV', 'DD', 'DA', 'DR', 'DL', 'AH', 'AV', 'AD', 'AA', 'AR', 'AL', 
+          'RH', 'RV', 'RD', 'RA', 'RR', 'RL', 'LH', 'LV', 'LD', 'LA', 'LR', 'LL']
+# str to int, i.e. COUNTS_INDEX['HH'] = 0
+COUNTS_INDEX = {feature: index for index, feature in enumerate(COUNTS)} 
+
+class RiccardiWitness:
+    def __init__(self, param, counts=None):
+        self.param = param
+        self.counts = counts
+        self.a = np.cos(self.param)
+        self.b = np.sin(self.param)
+
+    def W1(self):
+        if self.counts: # experimental 
+            HH, HV, VH, VV, DD, DA, AD, AA, RR, RL, LR, LL = (
+                self.counts[COUNTS_INDEX['HH']], self.counts[COUNTS_INDEX['HV']],
+                self.counts[COUNTS_INDEX['VH']], self.counts[COUNTS_INDEX['VV']],
+                self.counts[COUNTS_INDEX['DD']], self.counts[COUNTS_INDEX['DA']],
+                self.counts[COUNTS_INDEX['AD']], self.counts[COUNTS_INDEX['AA']],
+                self.counts[COUNTS_INDEX['RR']], self.counts[COUNTS_INDEX['RL']],
+                self.counts[COUNTS_INDEX['LR']], self.counts[COUNTS_INDEX['LL']])
+
+            return np.real(0.25*(
+                        1 + ((HH - HV - VH + VV) / (HH + HV + VH + VV)) + 
+                        (self.a**2 - self.b**2)*((DD - DA - AD + AA) / (DD + DA + AD + AA)) + 
+                        (self.a**2 - self.b**2)*((RR - RL - LR + LL) / (RR + RL + LR + LL)) + 
+                        2*self.a*self.b*(((HH + HV - VH - VV) / (HH + HV + VH + VV)) + 
+                            ((HH - HV + VH - VV) / (HH + HV + VH + VV)))))
+        
+        else: # theoretical
+            phi1 = self.a*PHI_P + self.b*PHI_M
+            return op.partial_transpose(phi1 * op.adjoint(phi1))
+
+    def __str__(self):
+        return "Parameter: " + str(self.param) + "\nCounts: " + str(self.counts)
+    
+
+
+def W1(param, counts=None):
     a,b = np.cos(param), np.sin(param)
 
-    if expt:
-        return 0
+    # experimental 
+    if counts:
+        HH, HV, VH, VV, DD, DA, AD, AA, RR, RL, LR, LL = (
+            counts[COUNTS_INDEX['HH']], counts[COUNTS_INDEX['HV']],
+            counts[COUNTS_INDEX['VH']], counts[COUNTS_INDEX['VV']],
+            counts[COUNTS_INDEX['DD']], counts[COUNTS_INDEX['DA']],
+            counts[COUNTS_INDEX['AD']], counts[COUNTS_INDEX['AA']],
+            counts[COUNTS_INDEX['RR']], counts[COUNTS_INDEX['RL']],
+            counts[COUNTS_INDEX['LR']], counts[COUNTS_INDEX['LL']])
+
+        return np.real(0.25*(
+                    1 + ((HH - HV - VH + VV) / (HH + HV + VH + VV)) + 
+                    (a**2 - b**2)*((DD - DA - AD + AA) / (DD + DA + AD + AA)) + 
+                    (a**2 - b**2)*((RR - RL - LR + LL) / (RR + RL + LR + LL)) + 
+                    2*a*b*(((HH + HV - VH - VV) / (HH + HV + VH + VV)) + 
+                           ((HH - HV + VH - VV) / (HH + HV + VH + VV)))))
+    
+    # theoretical
     else:
         phi1 = a*PHI_P + b*PHI_M
         return op.partial_transpose(phi1 * op.adjoint(phi1))
 
-def W2(param, expt=False):
+def W2(param, counts=None):
     a,b = np.cos(param), np.sin(param)
 
-    if expt:
+    if counts:
         return 0
     else:
         phi2 = a*PSI_P + b*PSI_M
         return op.partial_transpose(phi2 * op.adjoint(phi2))
 
-def W3(param, expt=False):
+def W3(param, counts=None):
     a,b = np.cos(param), np.sin(param)
 
-    if expt:
+    if counts:
         return 0
     else:
         phi3 = a*PHI_P + b*PSI_P
         return op.partial_transpose(phi3 * op.adjoint(phi3))
 
-def W4(param, expt=False):
+def W4(param, counts=None):
     a,b = np.cos(param), np.sin(param)
 
-    if expt:
+    if counts:
         return 0
     else:
         phi4 = a*PHI_M + b*PSI_M
         return op.partial_transpose(phi4 * op.adjoint(phi4))
 
-def W5(param, expt=False):
+def W5(param, counts=None):
     a,b = np.cos(param), np.sin(param)
 
-    if expt:
+    if counts:
         return 0
     else:
         phi5 = a*PHI_P + 1j*b*PSI_M
         return op.partial_transpose(phi5 * op.adjoint(phi5))
 
-def W6(param, expt=False):
+def W6(param, counts=None):
     a,b = np.cos(param), np.sin(param)
 
-    if expt:
+    if counts:
         return 0
     else:
         phi6 = a*PHI_M + 1j*b*PSI_P

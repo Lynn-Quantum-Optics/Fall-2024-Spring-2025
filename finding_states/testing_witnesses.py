@@ -29,7 +29,7 @@ from uncertainties import unumpy as unp
 
 # Original code adapted from Oscar Scholin in Summer 2023
 from sample_rho import *
-from rho_methods import *
+from finding_states.legacy_rho_methods import *
 
 ####### Helper methods for rho creation
 def ket(data):
