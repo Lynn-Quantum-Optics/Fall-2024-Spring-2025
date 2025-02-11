@@ -42,6 +42,17 @@ def rotate_y(m, theta):
     """Rotate matrix m by theta about the y axis"""
     return gates.R_y(theta) @ m @ adjoint(gates.R_y(theta))
 
+def rotate_m(m, n):
+    """
+    Rotate matrix m with matrix n
+    
+    Params:
+    m - the matrix to be rotated
+    n - the matrix that is doing the rotation (i.e. R_z)
+    NOTE: m and n must be of the same size
+    """
+    return n @ m @ adjoint(n)
+
 
 def get_witness(W, rho):
     """
