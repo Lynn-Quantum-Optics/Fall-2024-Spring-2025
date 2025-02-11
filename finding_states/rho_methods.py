@@ -138,13 +138,6 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             w = func(params, expec_vals)
             return unp.nominal_values(w)
 
-
-        #### TODO: Rewrite optimization
-        # 
-        # 1) use a set of random initial guess (x0,x1,x2) as starting points (for scipy minimze)
-        # 2) choose best random initial guess (via scipy minimization)
-        # 3) use gradient descent optimization (look into tensorflow or scipy)
-
         # now perform optimization; break into three groups based on the number of params to optimize
         all_W = [get_W1,get_W2, get_W3, get_W4, get_W5, get_W6, get_Wp1, get_Wp2, get_Wp3, get_Wp4, get_Wp5, get_Wp6, get_Wp7, get_Wp8, get_Wp9]
         W_expec_vals = []
@@ -171,7 +164,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                     # returns the parameters that got minimized
                     return min_W(x0, expt, bounds).x
         
-        # Look into sklearn SGDRegressor or tensorflow
+        # TODO: Look into sklearn SGDRegressor or tensorflow
         def gradient_descent(guess, params_arr, bounds, zeta=0.7, num_reps = 50):
             """
             Does gradient descent optimization
@@ -221,6 +214,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                 
                 # Using scipy to minimize the Ws and choose the best initial guess
                 best_guess = min(x0, x1, x2)
+                # TODO: Figure out where to initialize & update these to reduce number of vars
                 x0 = best_guess.x0
                 w_min_val = best_guess.w_val
                 w_min_params = best_guess.w_params
@@ -464,6 +458,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             if return_params: # to log the params
                 min_params = []
             
+            # TODO: Fix redundancy
             # Same optimization (essentially) as for experimental
             for i, W in enumerate(all_W):
                 if i <= 5: # just theta optimization
