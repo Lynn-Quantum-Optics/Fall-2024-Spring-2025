@@ -11,6 +11,33 @@ def rotate(W):
 
     return M
 
+class InitGuess:
+    """
+    An object class that handles initial guesses
+
+    Params:
+        x0: an array that stores the guess, which is a vector
+        w_val: the w0 associated with x0
+        w_params: the w0 parameters associated with x0
+    """
+    def __init__(self, bounds, params_arr):
+        self.x0 = params_arr
+        self.w_val = min_W_val(self.x0, bounds)
+        self.w_params = min_W_params(self.x0, bounds)
+    # "magic methods" help us compare instances of a class
+    def __eq__(self, other):
+        return self.w_val == other.w_val
+    def __ne__(self, other):
+        return self.w_val != other.w_val
+    def __lt__(self, other):
+        return self.w_val < other.w_val
+    def __le__(self, other):
+        return self.w_val <= other.w_val
+    def __gt__(self, other):
+        return self.w_val > other.w_val
+    def __ge__(self, other):
+        return self.w_val >= other.w_val
+
 def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, 
                       expt_purity = None, model=None, optimize = True, gd=True, ads_test=False, return_all=False, 
                       return_params=False):
@@ -181,33 +208,6 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                     isi=0
                 else:
                     isi+=1
-
-        class InitGuess:
-            """
-            An object class that handles initial guesses
-
-            Params:
-                x0: an array that stores the guess, which is a vector
-                w_val: the w0 associated with x0
-                w_params: the w0 parameters associated with x0
-            """
-            def __init__(self, bounds, params_arr):
-                self.x0 = params_arr
-                self.w_val = min_W_val(self.x0, bounds)
-                self.w_params = min_W_params(self.x0, bounds)
-            # "magic methods" help us compare instances of a class
-            def __eq__(self, other):
-                return self.w_val == other.w_val
-            def __ne__(self, other):
-                return self.w_val != other.w_val
-            def __lt__(self, other):
-                return self.w_val < other.w_val
-            def __le__(self, other):
-                return self.w_val <= other.w_val
-            def __gt__(self, other):
-                return self.w_val > other.w_val
-            def __ge__(self, other):
-                return self.w_val >= other.w_val
         
         for i, W in enumerate(all_W):
             if i <= 5: # These Ws only have theta, so just optimize theta
