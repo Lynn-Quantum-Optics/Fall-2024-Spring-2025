@@ -11,18 +11,6 @@ def rotate(W):
 
     return M
 
-# Look into sklearn SGDRegressor or tensorflow
-def gradient_descent(Ws, zeta=0.7, num_reps = 50):
-    """
-    Does gradient descent optimization
-
-    Params:
-        Ws:   the witnesses to optimize
-        zeta: learning rate 
-        num_reps: int, number of times to run the optimization
-    """
-    return 0
-
 def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, 
                       expt_purity = None, model=None, optimize = True, gd=True, ads_test=False, return_all=False, 
                       return_params=False):
@@ -134,185 +122,136 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
         all_W = [get_W1,get_W2, get_W3, get_W4, get_W5, get_W6, get_Wp1, get_Wp2, get_Wp3, get_Wp4, get_Wp5, get_Wp6, get_Wp7, get_Wp8, get_Wp9]
         W_expec_vals = []
         min_params = []
+
+        # defining these min_W functions outside of the for loop should improve efficiency
+        def min_W(x0, expt, bounds):
+            '''
+            Returns a scipy object that has the function that gets minimized
+            and the params used to minimize
+            '''
+            if expt:
+                arr = get_nom
+                args = (counts, W)
+            else:
+                arr = W
+                args = (counts,)
+            return minimize(arr, x0=x0, args=args, bounds=bounds)
+        
+        def min_W_val(x0, bounds):
+                    # returns minimum expectation value of W
+                    return min_W(x0, expt, bounds).fun
+        def min_W_params(x0, bounds):
+                    # returns the parameters that got minimized
+                    return min_W(x0, expt, bounds).x
+        
+        # Look into sklearn SGDRegressor or tensorflow
+        def gradient_descent(guess, params_arr, bounds, zeta=0.7, num_reps = 50):
+            """
+            Does gradient descent optimization
+
+            Params:
+                guess: an InitGuess object that is the best guess from the scipy minimization step
+                params_arr: generates a new random guess based on how many params the W has
+                bounds: ensures min_W_val is called with the right bounds based on number of params for W
+                zeta: learning rate 
+                num_reps: int, number of times to run the optimization
+            Returns:
+                an InitGuess object that represents the optimized W
+            """
+            x0 = guess.x0
+            w_min_val = guess.w_val
+            w_min_params = guess.w_params
+            isi = 0 # index since last improvement
+            for _ in range(num_reps): # repeat 10 times and take the minimum
+                if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
+                    x0 = params_arr
+                else:
+                    grad = approx_fprime(guess.x0, min_W_val, 1e-6)
+                    if np.all(grad < 1e-5*np.ones(len(grad))):
+                        break
+                    else:
+                        x0 = x0 - zeta*grad
+
+                w_val = min_W_val(x0, bounds)
+                w_params = min_W_params(x0, bounds)
+                                
+                if w_val < w_min_val:
+                    w_min_val = w_val
+                    w_min_params = w_params
+                    isi=0
+                else:
+                    isi+=1
+
+        class InitGuess:
+            """
+            An object class that handles initial guesses
+
+            Params:
+                x0: an array that stores the guess, which is a vector
+                w_val: the w0 associated with x0
+                w_params: the w0 parameters associated with x0
+            """
+            def __init__(self, bounds, params_arr):
+                self.x0 = params_arr
+                self.w_val = min_W_val(self.x0, bounds)
+                self.w_params = min_W_params(self.x0, bounds)
+            # "magic methods" help us compare instances of a class
+            def __eq__(self, other):
+                return self.w_val == other.w_val
+            def __ne__(self, other):
+                return self.w_val != other.w_val
+            def __lt__(self, other):
+                return self.w_val < other.w_val
+            def __le__(self, other):
+                return self.w_val <= other.w_val
+            def __gt__(self, other):
+                return self.w_val > other.w_val
+            def __ge__(self, other):
+                return self.w_val >= other.w_val
+        
         for i, W in enumerate(all_W):
             if i <= 5: # These Ws only have theta, so just optimize theta
-                # get initial guess at boundary
-                if not(expt):
-                    def min_W(x0):
-                        # x0 is starting point for minimization
-                        return minimize(W, x0=x0, args=(counts,), bounds=[(0, np.pi)])
-                else:
-                    def min_W(x0):
-                        '''
-                        Returns a scipy object that has the function that gets minimized
-                        and the params used to minimize
-                        '''
-                        return minimize(get_nom, x0=x0, args=(counts, W), bounds=[(0, np.pi)])
-
-                def min_W_val(x0):
-                    # returns minimum expectation value of W
-                    return min_W(x0).fun
-
-                def min_W_params(x0):
-                    # returns the parameters that got minimized
-                    return min_W(x0).x
-
+                bounds_t = [(0, np.pi)]
+                params_arr_t = [np.random.rand()*np.pi]
                 # Try three different starting conditions (initial guesses)
-                # THese are all initial guesses
-                x0 = [np.random.rand()*np.pi]
-                w0_val = min_W_val(x0)
-                w0_params = min_W_params(x0)
-                x1 = [np.random.rand()*np.pi]
-                w1_val = min_W_val(x1)
-                w1_params = min_W_params(x1)
-                x2 = [np.random.rand()*np.pi]
-                w2_val = min_W_val(x2)
-                w2_params = min_W_params(x2)
+                # These are all initial guesses
+                x0 = InitGuess(bounds_t, params_arr_t)
+                x1 = InitGuess(bounds_t, params_arr_t)
+                x2 = InitGuess(bounds_t, params_arr_t)
                 
                 # Using scipy to minimize the Ws and choose the best initial guess
-                if w0_val < w1_val and w0_val <w2_val:
-                    w_min_val = w0_val
-                    w_min_params = w0_params
-                elif w1_val< w0_val and w1_val < w2_val:
-                    w_min_val = w1_val
-                    w_min_params = w1_params
-                else:
-                    w_min_val = w2_val
-                    w_min_params = w2_params
+                best_guess = min(x0, x1, x2)
+                x0 = best_guess.x0
+                w_min_val = best_guess.w_val
+                w_min_params = best_guess.w_params
 
                 # Use best initial guess in Gradient descent to minimze Ws further
-                if optimize:
-                    isi = 0 # index since last improvement
-                    for _ in range(num_reps): # repeat 10 times and take the minimum
-                        if gd:
-                            if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
-                                x0 = [np.random.rand()*np.pi]
-                            else:
-                                grad = approx_fprime(x0, min_W_val, 1e-6)
-                                if np.all(grad < 1e-5*np.ones(len(grad))):
-                                    break
-                                else:
-                                    x0 = x0 - zeta*grad
-                        else:
-                            # choose another random initial guess
-                            x0 = [np.random.rand()*np.pi]
-
-
-                        w_val = min_W_val(x0)
-                        w_params = min_W_params(x0)
-                        
-                        if w_val < w_min_val:
-                            w_min_val = w_val
-                            w_min_params = w_params
-                            isi=0
-                        else:
-                            isi+=1
+                gradient_descent(best_guess, params_arr_t, bounds_t)
             
             # These witnesses have three parameters to be minimized (theta, alpha, and beta)
             elif i==8 or i==11 or i==14:
-                if not(expt):
-                    def min_W(x0):
-                        return minimize(W, x0=x0, args=(counts,), bounds=[(0, np.pi/2),(0, np.pi*2), (0, np.pi*2)])
-                else:
-                    def min_W(x0):
-                        return minimize(get_nom, x0=x0, args=(counts, W), bounds=[(0, np.pi/2),(0, np.pi*2), (0, np.pi*2)])
-
-                def min_W_val(x0):
-                    return min_W(x0).fun
-    
-                def min_W_params(x0):
-                    return min_W(x0).x
+                bounds_tab = [(0, np.pi/2),(0, np.pi*2), (0, np.pi*2)]
+                params_arr_tab = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
                 
+                # Two different starting conditions (init. guesses)
                 # Process is the same as the one before (just with different parameters)
-                x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
-                w0_val = min_W_val(x0)
-                w0_params = min_W_params(x0)
-                x1 =  [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
-                w1_val = min_W_val(x1)
-                w1_params = min_W_params(x1)
-                if w0_val < w1_val:
-                    w_min_val = w0_val
-                    w_min_params = w0_params
-                else:
-                    w_min_val = w1_val
-                    w_min_params = w1_params
-                
-                if optimize:
-                    isi = 0 # index since last improvement
-                    for _ in range(num_reps): # repeat 10 times and take the minimum
-                        if gd:
-                            if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
-                                x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
-                            else:
-                                grad = approx_fprime(x0, min_W_val, 1e-6)
-                                if np.all(grad < 1e-5*np.ones(len(grad))):
-                                    x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
-                                else:
-                                    x0 = x0 - zeta*grad
-                        else:
-                            x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
+                x0 = InitGuess(bounds_tab, params_arr_tab)
+                x1 = InitGuess(bounds_tab, params_arr_tab)
 
-                        w_val = min_W_val(x0)
-                        w_params = min_W_params(x0)
-                        # print(w_min_val, w_val)
-                        if w_val < w_min_val:
-                            w_min_val = w_val
-                            w_min_params = w_params
-                            isi=0
-                        else:
-                            isi+=1
+                best_guess = min(x0, x1)
+                gradient_descent(best_guess, params_arr_tab, bounds_tab)
                 
             # The rest of the witnesses have 2 parameters to minimize (theta and alpha)
             else:
-                if not(expt):
-                    def min_W(x0):
-                        return minimize(W, x0=x0, args=(counts,), bounds=[(0, np.pi/2),(0, np.pi*2)])
-                else:
-                    def min_W(x0):
-                        return minimize(get_nom, x0=x0, args=(counts, W), bounds=[(0, np.pi/2),(0, np.pi*2)])
-
-                def min_W_val(x0):
-                    return min_W(x0).fun
-
-                def min_W_params(x0):
-                    return min_W(x0).x
+                bounds_ta = [(0, np.pi/2),(0, np.pi*2)]
+                params_arr_ta = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
                     
-                x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
-                w0_val = min_W(x0).fun
-                w0_params = min_W(x0).x
-                x1 =  [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
-                w1_val = min_W(x1).fun
-                w1_params = min_W(x1).x
-                if w0_val < w1_val:
-                    w_min_val = w0_val
-                    w_min_params = w0_params
-                else:
-                    w_min_val = w1_val
-                    w_min_params = w1_params
-                if optimize:
-                    isi = 0 # index since last improvement
-                    for _ in range(num_reps): # repeat 10 times and take the minimum
-                        if gd:
-                            if isi == num_reps//2: # if isi hasn't improved in a while, reset to random initial guess
-                                x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
-                            else:
-                                grad = approx_fprime(x0, min_W_val, 1e-6)
-                                if np.all(grad < 1e-5*np.ones(len(grad))):
-                                    x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
-                                else:
-                                    x0 = x0 - zeta*grad
-                        else:
-                            x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
+                # Two init. guesses
+                x0 = InitGuess(bounds_ta, params_arr_ta)
+                x1 = InitGuess(bounds_ta, params_arr_ta)
 
-                        w_val = min_W_val(x0)
-                        w_params = min_W_params(x0)
-                        
-                        if w_val < w_min_val:
-                            w_min_val = w_val
-                            w_min_params = w_params
-                            isi=0
-                        else:
-                            isi+=1
+                best_guess = min(x0, x1)
+                gradient_descent(best_guess, params_arr_ta, bounds_ta)
 
             if expt: # automatically calculate uncertainty
                 W_expec_vals.append(W(w_min_params, counts))
