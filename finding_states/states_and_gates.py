@@ -56,9 +56,13 @@ class RiccardiWitness:
     Note: If counts is given, experimental calculations will be used, otherwise 
           theoretical
     """
-    def __init__(self, param, counts=None):
+    def __init__(self, param, rho, counts=None, expt=False):
         self.param = param
         self.counts = counts
+        if expt and counts:
+            self.rho = rho # TODO: experimental rho?
+
+        self.rho = rho
         self.a = np.cos(self.param)
         self.b = np.sin(self.param)
 
@@ -76,7 +80,7 @@ class RiccardiWitness:
                         1 + ((hh - hv - vh + vv) / (hh + hv + vh + vv)) + 
                         (self.a**2 - self.b**2)*((dd - da - ad + aa) / (dd + da + ad + aa)) + 
                         (self.a**2 - self.b**2)*((rr - rl - lr + ll) / (rr + rl + lr + ll)) + 
-                        2*self.a*self.b*(((hh + hv - vh - vv) / (hh + HV + vh + vv)) + 
+                        2*self.a*self.b*(((hh + hv - vh - vv) / (hh + hv + vh + vv)) + 
                             ((hh - hv + vh - vv) / (hh + hv + vh + vv)))))
         
         else: # theoretical
@@ -117,23 +121,34 @@ class RiccardiWitness:
         else:
             phi6 = self.a*PHI_M + 1j*self.b*PSI_P
             return op.partial_transpose(phi6 * op.adjoint(phi6))
+        
+    def get_witness(w, rho):
+        """
+        Returns the value to be minimized to find the expectation value of W
+
+        Params:
+            w   - the witness matrix
+            rho - the density matrix
+        """
+        return np.real(np.trace(w @ rho))
 
 class Wp(RiccardiWitness):
     """
     W' witnesses, calculated with Paco's rotations
 
     Attributes:
-    param             - the parameter (theta) for the rank-1 projectors
     counts (optional) - np array of photon counts and uncertainties from experimental data
     angles            - a list of angles to be used in rotations
-        + angles[0] = alpha
-        + angles[1] = beta
+        + angles[0] = theta (rank-1 projector parameter)
+        + angles[1] = alpha
+        + alpha[2] = beta
     """
-    def __init__(self, param, angles, counts=None):
-        super().__init__(param, counts)
+    def __init__(self, angles, counts=None):
+        super().__init__(angles[0], counts)
         self.angles = angles
-        self.alpha = angles[0]
-        self.beta = angles[1]
+        self.theta = angles[0]
+        self.alpha = angles[1]
+        self.beta = angles[2]
 
     def Wp1(self):
         w1 = super().W1()

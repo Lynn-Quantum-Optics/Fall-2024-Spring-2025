@@ -54,12 +54,3 @@ def rotate_m(m, n):
     return n @ m @ adjoint(n)
 
 
-def get_witness(W, rho):
-    """
-    Returns the value to be minimized to find the expectation value of W
-
-    Params:
-        W   - the witness matrix
-        rho - the density matrix
-    """
-    return np.real(np.trace(W @ rho))
