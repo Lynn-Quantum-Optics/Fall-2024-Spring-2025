@@ -1,7 +1,7 @@
 import numpy as np
 import operations as op
 
-### Column vectors ###
+### Jones Vectors ###
 HH = np.array([1, 0, 0, 0]).reshape((4,1))
 HV = np.array([0, 1, 0, 0]).reshape((4,1))
 VH = np.array([0, 0, 1, 0]).reshape((4,1))
@@ -43,86 +43,178 @@ COUNTS = ['HH', 'HV', 'HD', 'HA', 'HR', 'HL', 'VH', 'VV', 'VD', 'VA', 'VR', 'VL'
           'DH', 'DV', 'DD', 'DA', 'DR', 'DL', 'AH', 'AV', 'AD', 'AA', 'AR', 'AL', 
           'RH', 'RV', 'RD', 'RA', 'RR', 'RL', 'LH', 'LV', 'LD', 'LA', 'LR', 'LL']
 # str to int, i.e. COUNTS_INDEX['HH'] = 0
-COUNTS_INDEX = {feature: index for index, feature in enumerate(COUNTS)} 
+COUNTS_INDEX = {count: index for index, count in enumerate(COUNTS)} 
 
 class RiccardiWitness:
     """
     Riccardi witnesses (W)
 
     Attributes: 
-    param             - the parameter (theta) for the rank-1 projectors
+    theta             - the parameter for the rank-1 projectors
     counts (optional) - np array of photon counts and uncertainties from experimental data
+    rho (optional)    - the density matrix for the entangled photon state
+    expt              - whether or not to calculate the experimental density matrix using counts
 
-    Note: If counts is given, experimental calculations will be used, otherwise 
-          theoretical
+    NOTE: If counts is given, experimental calculations will be used
+    NOTE: If rho is given, theoretical calculations will be used
+    NOTE: expt is True by default
     """
-    def __init__(self, param, rho, counts=None, expt=False):
-        self.param = param
+    def __init__(self, theta, rho = None, counts=None, expt=True):
+        self.theta = theta
         self.counts = counts
-        if expt and counts:
-            self.rho = rho # TODO: experimental rho?
+        self.expt = expt
 
-        self.rho = rho
-        self.a = np.cos(self.param)
-        self.b = np.sin(self.param)
+        # counts not given, so we want to use the given theoretical rho
+        if not counts:
+            self.rho = rho
+
+        else:
+            self.hh, self.hv = counts[COUNTS_INDEX['HH']], counts[COUNTS_INDEX['HV']]
+            self.hd, self.ha = counts[COUNTS_INDEX['HD']], counts[COUNTS_INDEX['HA']]
+            self.hr, self.hl = counts[COUNTS_INDEX['HR']], counts[COUNTS_INDEX['HL']]
+            self.vh, self.vv = counts[COUNTS_INDEX['VH']], counts[COUNTS_INDEX['VV']]
+            self.vd, self.va = counts[COUNTS_INDEX['VD']], counts[COUNTS_INDEX['VA']]
+            self.vr, self.vl = counts[COUNTS_INDEX['VR']], counts[COUNTS_INDEX['VL']]
+            self.dh, self.dv = counts[COUNTS_INDEX['DH']], counts[COUNTS_INDEX['DV']]
+            self.dd, self.da = counts[COUNTS_INDEX['DD']], counts[COUNTS_INDEX['DA']]
+            self.dr, self.dl = counts[COUNTS_INDEX['DR']], counts[COUNTS_INDEX['DL']]
+            self.ah, self.av = counts[COUNTS_INDEX['AH']], counts[COUNTS_INDEX['AV']]
+            self.ad, self.aa = counts[COUNTS_INDEX['AD']], counts[COUNTS_INDEX['AA']]
+            self.ar, self.al = counts[COUNTS_INDEX['AR']], counts[COUNTS_INDEX['AL']]
+            self.rh, self.rv = counts[COUNTS_INDEX['RH']], counts[COUNTS_INDEX['RV']]
+            self.rd, self.ra = counts[COUNTS_INDEX['RD']], counts[COUNTS_INDEX['RA']]
+            self.rr, self.rl = counts[COUNTS_INDEX['RR']], counts[COUNTS_INDEX['RL']]
+            self.lh, self.lv = counts[COUNTS_INDEX['LH']], counts[COUNTS_INDEX['LV']]
+            self.ld, self.la = counts[COUNTS_INDEX['LD']], counts[COUNTS_INDEX['LA']]
+            self.lr, self.ll = counts[COUNTS_INDEX['LR']], counts[COUNTS_INDEX['LL']]
+
+            self.stokes = self.calculate_stokes()
+            
+            # counts given, and we want to calculate the experimental rho 
+            # NOTE: this requires using a full tomography
+            if expt:
+                self.rho = self.expt_rho()
+
+            # counts given, but we just want witness expectation values, so
+            # rho is not desired in order to minimize the number of measurements
+            else:
+                assert(rho == None, "ERROR: counts was given, so rho should not be given")
+
+        # parameters
+        self.a = np.cos(self.theta)
+        self.b = np.sin(self.theta)
 
     def W1(self):
-        if self.counts: # experimental 
-            hh, hv, vh, vv, dd, da, ad, aa, rr, rl, lr, ll = (
-                self.counts[COUNTS_INDEX['HH']], self.counts[COUNTS_INDEX['HV']],
-                self.counts[COUNTS_INDEX['VH']], self.counts[COUNTS_INDEX['VV']],
-                self.counts[COUNTS_INDEX['DD']], self.counts[COUNTS_INDEX['DA']],
-                self.counts[COUNTS_INDEX['AD']], self.counts[COUNTS_INDEX['AA']],
-                self.counts[COUNTS_INDEX['RR']], self.counts[COUNTS_INDEX['RL']],
-                self.counts[COUNTS_INDEX['LR']], self.counts[COUNTS_INDEX['LL']])
-
-            return np.real(0.25*(
-                        1 + ((hh - hv - vh + vv) / (hh + hv + vh + vv)) + 
-                        (self.a**2 - self.b**2)*((dd - da - ad + aa) / (dd + da + ad + aa)) + 
-                        (self.a**2 - self.b**2)*((rr - rl - lr + ll) / (rr + rl + lr + ll)) + 
-                        2*self.a*self.b*(((hh + hv - vh - vv) / (hh + hv + vh + vv)) + 
-                            ((hh - hv + vh - vv) / (hh + hv + vh + vv)))))
+        # expectation value (for when we don't want to use full tomography)
+        if self.counts and not self.expt:
+            return 0.25*(self.stokes[0] + self.stokes[15] + 
+                        (self.a**2 - self.b**2)*self.stokes[5] + 
+                        (self.a**2 - self.b**2)*self.stokes[10] + 
+                        2*self.a*self.b*(self.stokes[12] + self.stokes[3]))
         
-        else: # theoretical
+        # W1 matrix (for when we use full tomography & calculate rho)
+        else:
             phi1 = self.a*PHI_P + self.b*PHI_M
             return op.partial_transpose(phi1 * op.adjoint(phi1))
         
     def W2(self):
-        if self.counts:
-            return 0
+        if self.counts and not self.expt:
+            return 0.25*(self.stokes[0] - self.stokes[15] + 
+                        (self.a**2 - self.b**2)*self.stokes[5] - 
+                        (self.a**2 - self.b**2)*self.stokes[10] + 
+                        2*self.a*self.b*(self.stokes[12] - self.stokes[3]))
         else:
             phi2 = self.a*PSI_P + self.b*PSI_M
             return op.partial_transpose(phi2 * op.adjoint(phi2))
         
     def W3(self):
-        if self.counts:
-            return 0
+        if self.counts and not self.expt:
+            return 0.25*(self.stokes[0] + self.stokes[5] + 
+                         (self.a**2 - self.b**2)*self.stokes[15] + 
+                         (self.a**2 - self.b**2)*self.stokes[10] + 
+                         2*self.a*self.b*(self.stokes[4] + self.stokes[1]))
         else:
             phi3 = self.a*PHI_P + self.b*PSI_P
             return op.partial_transpose(phi3 * op.adjoint(phi3))
 
     def W4(self):
-        if self.counts:
-            return 0
+        if self.counts and not self.expt:
+            return 0.25*(self.stokes[0] - self.stokes[5] + 
+                         (self.a**2 - self.b**2)*self.stokes[15] - 
+                         (self.a**2 - self.b**2)*self.stokes[10] - 
+                         2*self.a*self.b*(self.stokes[4] - self.stokes[1]))
         else:
             phi4 = self.a*PHI_M + self.b*PSI_M
             return op.partial_transpose(phi4 * op.adjoint(phi4))
         
     def W5(self):
-        if self.counts:
-            return 0
+        if self.counts and not self.expt:
+            return 0.25*(self.stokes[0] + self.stokes[10] + 
+                         (self.a**2 - self.b**2)*self.stokes[15] + 
+                         (self.a**2 - self.b**2)*self.stokes[5] - 
+                         2*self.a*self.b*(self.stokes[8] + self.stokes[2]))
         else:
             phi5 = self.a*PHI_P + 1j*self.b*PSI_M
             return op.partial_transpose(phi5 * op.adjoint(phi5))
         
     def W6(self):
-        if self.counts:
-            return 0
+        if self.counts and not self.expt:
+            return 0.25*(self.stokes[0] - self.stokes[10] + 
+                         (self.a**2 - self.b**2)*self.stokes[15] - 
+                         (self.a**2 - self.b**2)*self.stokes[5] + 
+                         2*self.a*self.b*(self.stokes[8] - self.stokes[2]))
         else:
             phi6 = self.a*PHI_M + 1j*self.b*PSI_P
             return op.partial_transpose(phi6 * op.adjoint(phi6))
         
-    def get_witness(w, rho):
+    def expt_rho(self):
+        """Calculates the theoretical density matrix"""
+        
+        # Calculate tensor'd Pauli matrices
+        pauli = [np.kron(IDENTITY, IDENTITY), np.kron(IDENTITY, PAULI_X), np.kron(IDENTITY, PAULI_Y),
+                 np.kron(IDENTITY, PAULI_Z), np.kron(PAULI_X, IDENTITY), np.kron(PAULI_X, PAULI_X),
+                 np.kron(PAULI_X, PAULI_Y), np.kron(PAULI_X, PAULI_Z), np.kron(PAULI_Y, IDENTITY),
+                 np.kron(PAULI_Y, PAULI_X), np.kron(PAULI_Y, PAULI_Y), np.kron(PAULI_Y, PAULI_Z), 
+                 np.kron(PAULI_Z, IDENTITY), np.kron(PAULI_Z, PAULI_X), np.kron(PAULI_Z, PAULI_Y), 
+                 np.kron(PAULI_Z, PAULI_Z)
+                ]
+        
+        rho = np.zeros((4, 4), dtype='complex128')
+        for i in range(len(pauli)):
+            rho += self.stokes[i] * pauli[i]
+        
+        return 0.25 * rho
+
+    def calculate_stokes(self):
+        """
+        Calculates Stokes parameters
+        
+        NOTE: The order of this list is the same as S_{i, j} as listed in the 
+              1-photon and 2-photon states from Beili Nora Hu paper (page 9)
+        """
+        assert(self.counts is not None, "ERROR: counts not given")
+
+        stokes = [1,
+            (self.dd - self.da + self.ad - self.aa)/(self.dd + self.da + self.ad + self.aa),
+            (self.rr + self.lr - self.rl - self.ll)/(self.rr + self.lr + self.rl + self.ll),
+            (self.hh - self.hv - self.vh - self.vv)/(self.hh + self.hv + self.vh + self.vv),
+            (self.dd + self.da - self.ad - self.aa)/(self.dd + self.da + self.ad + self.da),
+            (self.dd - self.da - self.ad + self.aa)/(self.dd + self.da + self.ad + self.aa),
+            (self.dr - self.dl - self.ar + self.al)/(self.dr + self.dl + self.ar + self.al),
+            (self.dh - self.dv - self.ah + self.av)/(self.dh + self.dv + self.ah + self.av),
+            (self.rr - self.lr + self.rl - self.ll)/(self.rr + self.lr + self.rl + self.ll),
+            (self.rd - self.ra - self.ld + self.la)/(self.rd + self.ra + self.ld + self.la),
+            (self.rr - self.rl - self.lr + self.ll)/(self.rr + self.rl + self.lr + self.ll),
+            (self.rh - self.rv - self.lh + self.lv)/(self.rh + self.rv + self.lh + self.lv),
+            (self.hh + self.hv - self.vh - self.vv)/(self.hh + self.hv + self.vh + self.vv),
+            (self.hd - self.ha - self.vd + self.va)/(self.hd + self.ha + self.vd + self.va),
+            (self.hr - self.hl - self.vr + self.vl)/(self.hr + self.hl + self.vr + self.vl),
+            (self.hh - self.hv - self.vh + self.vv)/(self.hh + self.hv + self.vh + self.vv)
+        ]
+        
+        return stokes
+
+    def get_witnesses(self):
         """
         Returns the value to be minimized to find the expectation value of W
 
@@ -130,7 +222,13 @@ class RiccardiWitness:
             w   - the witness matrix
             rho - the density matrix
         """
-        return np.real(np.trace(w @ rho))
+        ws = [self.W1(), self.W2(), self.W3(), self.W4(), self.W5(), self.W6()]
+        vals = [None for i in range(len(ws))]
+        for i, w in enumerate(ws):
+            print(i, w)
+            vals[i] = np.real(np.trace(w @ self.rho))
+        
+        return vals
 
 class Wp(RiccardiWitness):
     """
@@ -138,15 +236,21 @@ class Wp(RiccardiWitness):
 
     Attributes:
     counts (optional) - np array of photon counts and uncertainties from experimental data
+    rho (optional)    - the density matrix for the entangled photon state
+    expt              - whether or not to calculate the experimental density matrix using counts
     angles            - a list of angles to be used in rotations
         + angles[0] = theta (rank-1 projector parameter)
         + angles[1] = alpha
-        + alpha[2] = beta
+        + angles[2] = beta
+
+        
+    NOTE: this class inherits from RiccardiWitnesses, so all methods in that class can be used here
     """
-    def __init__(self, angles, counts=None):
-        super().__init__(angles[0], counts)
+    def __init__(self, angles, rho=None, counts=None, expt=True):
+        assert(len(angles) == 3, "ERROR: 3 angles must be provided (theta, alpha, beta)")
+
+        super().__init__(angles[0], rho=rho, counts=counts, expt=expt)
         self.angles = angles
-        self.theta = angles[0]
         self.alpha = angles[1]
         self.beta = angles[2]
 
