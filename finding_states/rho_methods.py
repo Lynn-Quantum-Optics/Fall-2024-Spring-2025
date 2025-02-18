@@ -1,15 +1,8 @@
 import numpy as np
 from scipy.optimize import minimize, approx_fprime
 from uncertainties import unumpy as unp
-from states_and_gates import *
+import states_and_gates as states
 import operations as op
-
-def rotate(W):
-    M = W @ W
-
-    # NOTE: np.kron does tensor product
-
-    return M
 
 class InitGuess:
     """
