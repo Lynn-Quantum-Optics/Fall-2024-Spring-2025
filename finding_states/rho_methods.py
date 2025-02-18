@@ -196,9 +196,11 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                     isi+=1
         
         for i, W in enumerate(all_W):
+            # W 1-6
             if i <= 5: # These Ws only have theta, so just optimize theta
                 bounds_t = [(0, np.pi)]
                 params_arr_t = [np.random.rand()*np.pi]
+                # TODO: Fix bug that passes same random params to all three guesses...
                 # Try three different starting conditions (initial guesses)
                 # These are all initial guesses
                 x0 = InitGuess(bounds_t, params_arr_t)
@@ -208,13 +210,14 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
                 # Using scipy to minimize the Ws and choose the best initial guess
                 best_guess = min(x0, x1, x2)
                 # TODO: Figure out where to initialize & update these to reduce number of vars
-                x0 = best_guess.x0
-                w_min_val = best_guess.w_val
-                w_min_params = best_guess.w_params
+                
+                w_min_val = best_guess.w_val # minimum witness value
+                w_min_params = best_guess.w_params # parameters that gave minimum witness value
 
                 # Use best initial guess in Gradient descent to minimze Ws further
                 gradient_descent(best_guess, params_arr_t, bounds_t)
             
+            # Wp 3, 6, 9
             # These witnesses have three parameters to be minimized (theta, alpha, and beta)
             elif i==8 or i==11 or i==14:
                 bounds_tab = [(0, np.pi/2),(0, np.pi*2), (0, np.pi*2)]
