@@ -224,9 +224,15 @@ class RiccardiWitness:
         """
         ws = [self.W1(), self.W2(), self.W3(), self.W4(), self.W5(), self.W6()]
         vals = [None for i in range(len(ws))]
-        for i, w in enumerate(ws):
-            print(i, w)
-            vals[i] = np.real(np.trace(w @ self.rho))
+
+        # When we don't want to use rho
+        if self.counts and not self.expt:
+            return ws
+        
+        # We use rho
+        else: 
+            for i, w in enumerate(ws):
+                vals[i] = np.real(np.trace(w @ self.rho))
         
         return vals
 
