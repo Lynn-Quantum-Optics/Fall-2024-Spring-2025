@@ -1,5 +1,6 @@
 import numpy as np
 import operations as op
+import tensorflow as tf
 
 ### Jones Vectors ###
 HH = np.array([1, 0, 0, 0]).reshape((4,1))
@@ -51,8 +52,8 @@ class RiccardiWitness:
 
     Attributes: 
     theta             - the parameter for the rank-1 projectors
-    counts (optional) - np array of photon counts and uncertainties from experimental data
     rho (optional)    - the density matrix for the entangled photon state
+    counts (optional) - np array of photon counts and uncertainties from experimental data
     expt              - whether or not to calculate the experimental density matrix using counts
 
     NOTE: If counts is given, experimental calculations will be used
@@ -224,11 +225,47 @@ class RiccardiWitness:
         """
         ws = [self.W1(), self.W2(), self.W3(), self.W4(), self.W5(), self.W6()]
         vals = [None for i in range(len(ws))]
-        for i, w in enumerate(ws):
-            print(i, w)
-            vals[i] = np.real(np.trace(w @ self.rho))
+
+        # When we don't want to use rho
+        if self.counts and not self.expt:
+            return ws
+        
+        # We use rho
+        else: 
+            for i, w in enumerate(ws):
+                vals[i] = np.trace(w @ self.rho).real
         
         return vals
+    
+    # TODO: Review this, it's from ChatGPT
+    def tf_minimize(self):
+        minima = []
+        all_W = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
+
+        # Convert witness matrix function to TensorFlow
+        def witness_matrix_tf(w):
+            return tf.convert_to_tensor(w, dtype=tf.float64)
+
+        # Convert density matrix to TensorFlow
+        rho_tf = tf.convert_to_tensor(self.rho, dtype=tf.float64)
+
+        # Define loss function
+        def loss(theta):
+            W = witness_matrix_tf(theta)
+            return tf.linalg.trace(tf.matmul(W, rho_tf))
+
+        # Optimize using gradient descent
+        theta = tf.Variable(0.0, dtype=tf.float64)
+        optimizer = tf.optimizers.Adam(learning_rate=0.1)
+
+        for _ in range(100):  # Run optimization
+            with tf.GradientTape() as tape:
+                loss_value = loss(theta)
+            grad = tape.gradient(loss_value, theta)
+            optimizer.apply_gradients([(grad, theta)])
+
+        print("Optimal theta:", theta.numpy())
+
 
 class Wp(RiccardiWitness):
     """
