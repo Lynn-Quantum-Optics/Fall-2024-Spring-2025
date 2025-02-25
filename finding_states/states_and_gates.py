@@ -21,6 +21,12 @@ PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0]).reshape((4,1))
 PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0]).reshape((4,1))
 
 
+### Test States ###
+
+
+### Problem States ###
+
+
 ### Rotation Matrices ###
 #
 # Params: 
@@ -70,6 +76,11 @@ class RiccardiWitness:
             self.rho = rho
 
         else:
+            # counts given, but we just want witness expectation values, so
+            # rho is not desired in order to minimize the number of measurements
+            assert rho is None, "ERROR: counts was given, so rho should not be given"
+
+            # store individual counts in variables
             self.hh, self.hv = counts[COUNTS_INDEX['HH']], counts[COUNTS_INDEX['HV']]
             self.hd, self.ha = counts[COUNTS_INDEX['HD']], counts[COUNTS_INDEX['HA']]
             self.hr, self.hl = counts[COUNTS_INDEX['HR']], counts[COUNTS_INDEX['HL']]
@@ -90,22 +101,17 @@ class RiccardiWitness:
             self.lr, self.ll = counts[COUNTS_INDEX['LR']], counts[COUNTS_INDEX['LL']]
 
             self.stokes = self.calculate_stokes()
-            
+
             # counts given, and we want to calculate the experimental rho 
             # NOTE: this requires using a full tomography
             if expt:
-                self.rho = self.expt_rho()
-
-            # counts given, but we just want witness expectation values, so
-            # rho is not desired in order to minimize the number of measurements
-            else:
-                assert(rho == None, "ERROR: counts was given, so rho should not be given")
+                self.rho = self.expt_rho()                
 
         # parameters
         self.a = np.cos(self.theta)
         self.b = np.sin(self.theta)
 
-    def W1(self):
+    def W1(self, theta=None):
         # expectation value (for when we don't want to use full tomography)
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[15] + 
@@ -113,59 +119,78 @@ class RiccardiWitness:
                         (self.a**2 - self.b**2)*self.stokes[10] + 
                         2*self.a*self.b*(self.stokes[12] + self.stokes[3]))
         
+
         # W1 matrix (for when we use full tomography & calculate rho)
         else:
-            phi1 = self.a*PHI_P + self.b*PHI_M
+            if theta is not None:
+                phi1 = np.cos(theta)*PHI_P + np.sin(theta)*PHI_M
+            else:
+                phi1 = self.a*PHI_P + self.b*PHI_M
             return op.partial_transpose(phi1 * op.adjoint(phi1))
         
-    def W2(self):
+    def W2(self, theta = None):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[15] + 
                         (self.a**2 - self.b**2)*self.stokes[5] - 
                         (self.a**2 - self.b**2)*self.stokes[10] + 
                         2*self.a*self.b*(self.stokes[12] - self.stokes[3]))
         else:
-            phi2 = self.a*PSI_P + self.b*PSI_M
+            if theta is not None:
+                phi2 = np.cos(theta)*PSI_P + np.sin(theta)*PSI_M
+            else:
+                phi2 = self.a*PSI_P + self.b*PSI_M
             return op.partial_transpose(phi2 * op.adjoint(phi2))
         
-    def W3(self):
+    def W3(self, theta):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[5] + 
                          (self.a**2 - self.b**2)*self.stokes[15] + 
                          (self.a**2 - self.b**2)*self.stokes[10] + 
                          2*self.a*self.b*(self.stokes[4] + self.stokes[1]))
         else:
-            phi3 = self.a*PHI_P + self.b*PSI_P
+            if theta is not None:
+                phi3 = np.cos(theta)*PHI_P + np.sin(theta)*PSI_P
+            else:
+                phi3 = self.a*PHI_P + self.b*PSI_P
             return op.partial_transpose(phi3 * op.adjoint(phi3))
 
-    def W4(self):
+    def W4(self, theta):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[5] + 
                          (self.a**2 - self.b**2)*self.stokes[15] - 
                          (self.a**2 - self.b**2)*self.stokes[10] - 
                          2*self.a*self.b*(self.stokes[4] - self.stokes[1]))
         else:
-            phi4 = self.a*PHI_M + self.b*PSI_M
+            if theta is not None:
+                phi4 = np.cos(theta)*PHI_M + np.sin(theta)*PSI_M
+            else:
+                phi4 = self.a*PHI_M + self.b*PSI_M
             return op.partial_transpose(phi4 * op.adjoint(phi4))
         
-    def W5(self):
+    def W5(self, theta):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[10] + 
                          (self.a**2 - self.b**2)*self.stokes[15] + 
                          (self.a**2 - self.b**2)*self.stokes[5] - 
                          2*self.a*self.b*(self.stokes[8] + self.stokes[2]))
         else:
-            phi5 = self.a*PHI_P + 1j*self.b*PSI_M
+            if theta is not None:
+                phi5 = np.cos(theta)*PHI_P + np.sin(theta)*PSI_M
+            else:
+                phi5 = self.a*PHI_P + 1j*self.b*PSI_M
             return op.partial_transpose(phi5 * op.adjoint(phi5))
         
-    def W6(self):
+    def W6(self, theta):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[10] + 
                          (self.a**2 - self.b**2)*self.stokes[15] - 
                          (self.a**2 - self.b**2)*self.stokes[5] + 
                          2*self.a*self.b*(self.stokes[8] - self.stokes[2]))
         else:
-            phi6 = self.a*PHI_M + 1j*self.b*PSI_P
+            if theta is not None:
+                phi6 = np.cos(theta)*PHI_M + np.sin(theta)*PSI_P
+            else:
+                phi6 = self.a*PHI_M + 1j*self.b*PSI_P
             return op.partial_transpose(phi6 * op.adjoint(phi6))
         
     def expt_rho(self):
@@ -193,7 +218,7 @@ class RiccardiWitness:
         NOTE: The order of this list is the same as S_{i, j} as listed in the 
               1-photon and 2-photon states from Beili Nora Hu paper (page 9)
         """
-        assert(self.counts is not None, "ERROR: counts not given")
+        assert self.counts is not None, "ERROR: counts not given"
 
         stokes = [1,
             (self.dd - self.da + self.ad - self.aa)/(self.dd + self.da + self.ad + self.aa),
@@ -239,7 +264,8 @@ class RiccardiWitness:
     
     # TODO: Review this, it's from ChatGPT
     def tf_minimize(self):
-        minima = []
+        min_thetas = []
+        min_vals = []
         all_W = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
 
         # Convert witness matrix function to TensorFlow
@@ -250,21 +276,33 @@ class RiccardiWitness:
         rho_tf = tf.convert_to_tensor(self.rho, dtype=tf.float64)
 
         # Define loss function
-        def loss(theta):
-            W = witness_matrix_tf(theta)
-            return tf.linalg.trace(tf.matmul(W, rho_tf))
+        def loss(W, theta):
+            witness = witness_matrix_tf(W(theta))
+            return tf.linalg.trace(tf.matmul(witness, rho_tf))
 
         # Optimize using gradient descent
-        theta = tf.Variable(0.0, dtype=tf.float64)
-        optimizer = tf.optimizers.Adam(learning_rate=0.1)
+        optimizer = tf.optimizers.SGD(learning_rate=0.1) # stochastic gradient descent, note learning rate was 0.7
 
-        for _ in range(100):  # Run optimization
-            with tf.GradientTape() as tape:
-                loss_value = loss(theta)
-            grad = tape.gradient(loss_value, theta)
-            optimizer.apply_gradients([(grad, theta)])
 
-        print("Optimal theta:", theta.numpy())
+        # initial guess
+        theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+
+        for i, W in enumerate(all_W):
+            theta.assign(np.random.uniform(0, np.pi)) # initial guess
+
+            for _ in range(100):  # Run optimization, original has 50 iterations
+                with tf.GradientTape() as tape:
+                    loss_value = loss(W, theta)
+                grad = tape.gradient(loss_value, theta)
+
+                if grad is not None:  # Check if gradient exists (avoid NoneType errors)
+                    optimizer.apply_gradients([(grad, theta)])
+                    self.theta.assign(tf.clip_by_value(theta, 0.0, np.pi))  # Enforce bounds
+
+            min_thetas.append(theta.numpy())
+            min_vals.append(np.trace(W(theta) @ self.rho))
+        
+        return (min_thetas, min_vals)
 
 
 class Wp(RiccardiWitness):
@@ -284,7 +322,7 @@ class Wp(RiccardiWitness):
     NOTE: this class inherits from RiccardiWitnesses, so all methods in that class can be used here
     """
     def __init__(self, angles, rho=None, counts=None, expt=True):
-        assert(len(angles) == 3, "ERROR: 3 angles must be provided (theta, alpha, beta)")
+        assert len(angles) == 3, "ERROR: 3 angles must be provided (theta, alpha, beta)"
 
         super().__init__(angles[0], rho=rho, counts=counts, expt=expt)
         self.angles = angles
@@ -348,36 +386,4 @@ class Wp(RiccardiWitness):
 ## TESTS
 ##########
 if __name__ == '__main__':
-    theta = 3*np.pi/2
-
-    print("===== PAULI_X about z =====")
-    print("Actual: \n", op.rotate_z(PAULI_X, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*PAULI_X + np.sin(theta)*PAULI_Y, "\n")
-
-    print("===== PAULI_Y about z =====")
-    print("Actual: \n", op.rotate_z(PAULI_Y, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*PAULI_Y - np.sin(theta)*PAULI_X, "\n")
-
-    print("===== PAULI_X about y =====")
-    print("Actual: \n", op.rotate_y(PAULI_X, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*PAULI_X - np.sin(theta)*PAULI_Z, "\n")
-
-    print("===== PAULI_Z about y =====")
-    print("Actual: \n", op.rotate_y(PAULI_Z, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*PAULI_Z + np.sin(theta)*PAULI_X, "\n")
-
-    print("===== PAULI_Y about x =====")
-    print("Actual: \n", op.rotate_x(PAULI_Y, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*PAULI_Y - np.sin(theta)*PAULI_Z, "\n")
-
-    print("===== PAULI_Z about x =====")
-    print("Actual: \n", op.rotate_x(PAULI_Z, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*PAULI_Z + np.sin(theta)*PAULI_Y, "\n")
-
-    ### Predicted - Actual (expected: all 0s for all ###
-    # print((np.cos(theta)*PAULI_X + np.sin(theta)*PAULI_Y) - rotate_z(PAULI_X, theta))
-    # print((np.cos(theta)*PAULI_Y - np.sin(theta)*PAULI_X) - rotate_z(PAULI_Y, theta))
-    # print((np.cos(theta)*PAULI_X - np.sin(theta)*PAULI_Z) - rotate_y(PAULI_X, theta))  
-    # print((np.cos(theta)*PAULI_Z + np.sin(theta)*PAULI_X) - rotate_y(PAULI_Z, theta))
-    # print((np.cos(theta)*PAULI_Y - np.sin(theta)*PAULI_Z) - rotate_x(PAULI_Y, theta))
-    # print((np.cos(theta)*PAULI_Z + np.sin(theta)*PAULI_Y) - rotate_x(PAULI_Z, theta))
+    print("States and Gates Loaded.")
