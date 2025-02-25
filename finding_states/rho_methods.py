@@ -4,13 +4,6 @@ from uncertainties import unumpy as unp
 import states_and_gates as states
 import operations as op
 
-def rotate(W):
-    M = W @ W
-
-    # NOTE: np.kron does tensor product
-
-    return M
-
 def get_nom(params, expec_vals, func):
             '''For use in error propagation; returns the nominal value of the function'''
             w = func(params, expec_vals)
@@ -60,7 +53,7 @@ class InitGuess:
             self.x0 = [np.random.rand()*np.pi]
         elif num_params == 3:
             self.bounds = [(0, np.pi/2),(0, np.pi*2), (0, np.pi*2)]
-            self.x0= [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
+            self.x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi, np.random.rand()*2*np.pi]
         else: 
             self.bounds = [(0, np.pi/2),(0, np.pi*2)]
             self.x0 = [np.random.rand()*np.pi/2, np.random.rand()*2*np.pi]
