@@ -44,6 +44,9 @@ class InitGuess:
     Attributes:
         self.bounds: an array that holds the bounds for each randomized position component
         self.x0: an array that stores the initial position/conditions of the guess
+            self.x0[0]: theta
+            self.x0[1]: alpha (if it exists)
+            self.x0[2]: beta (if it exists)
         self.w_min_val: the minimum expectation value of W for this guess
         self.w_min_params: the parameters we used to get that minimized W expectation value
     """
