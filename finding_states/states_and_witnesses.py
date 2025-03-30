@@ -143,27 +143,36 @@ COUNTS = ['HH', 'HV', 'HD', 'HA', 'HR', 'HL', 'VH', 'VV', 'VD', 'VA', 'VR', 'VL'
 # str to int, i.e. COUNTS_INDEX['HH'] = 0
 COUNTS_INDEX = {count: index for index, count in enumerate(COUNTS)} 
 
-class RiccardiWitness:
+class W3:
     """
-    Riccardi witnesses (W)
+    W3 (Riccardi) witnesses. These use local measurements on 3 Pauli bases.
 
     Attributes: 
-    theta             - the parameter for the rank-1 projectors
+    angles (optional) - a list containing the parameter for the rank-1 projector (theta)
     rho (optional)    - the density matrix for the entangled photon state
     counts (optional) - np array of photon counts and uncertainties from experimental data
     expt              - whether or not to calculate the experimental density matrix using counts
 
+    NOTE: One of rho or counts must be given
     NOTE: If counts is given, experimental calculations will be used
     NOTE: If rho is given, theoretical calculations will be used
     NOTE: expt is True by default
     """
-    def __init__(self, theta, rho = None, counts=None, expt=True):
-        self.theta = theta
+    def __init__(self, angles, rho = None, counts=None, expt=True):
         self.counts = counts
         self.expt = expt
+        self.angles = angles
+
+        assert len(angles) == 1, "ERROR: only one angle (theta) should be given"
+        self.theta = angles[0]
+            
+        # rank-1 projector parameters
+        self.a = np.cos(self.theta)
+        self.b = np.sin(self.theta)
 
         # counts not given, so we want to use the given theoretical rho
         if not counts:
+            assert rho is not None, "ERROR: counts not given, so rho should be given"
             self.rho = rho
 
         else:
@@ -196,11 +205,7 @@ class RiccardiWitness:
             # counts given, and we want to calculate the experimental rho 
             # NOTE: this requires using a full tomography
             if expt:
-                self.rho = self.expt_rho()                
-
-        # parameters
-        self.a = np.cos(self.theta)
-        self.b = np.sin(self.theta)
+                self.rho = self.expt_rho()
 
     def W1(self, theta=None):
         """
@@ -223,6 +228,7 @@ class RiccardiWitness:
             if theta is not None:
                 phi1 = np.cos(theta)*PHI_P + np.sin(theta)*PHI_M
             else:
+                assert self.angles is not None, "ERROR: no theta given"
                 phi1 = self.a*PHI_P + self.b*PHI_M
             return op.partial_transpose(phi1 * op.adjoint(phi1))
         
@@ -236,6 +242,7 @@ class RiccardiWitness:
             if theta is not None:
                 phi2 = np.cos(theta)*PSI_P + np.sin(theta)*PSI_M
             else:
+                assert self.angles is not None, "ERROR: no theta given"
                 phi2 = self.a*PSI_P + self.b*PSI_M
             return op.partial_transpose(phi2 * op.adjoint(phi2))
         
@@ -249,6 +256,7 @@ class RiccardiWitness:
             if theta is not None:
                 phi3 = np.cos(theta)*PHI_P + np.sin(theta)*PSI_P
             else:
+                assert self.angles is not None, "ERROR: no theta given"
                 phi3 = self.a*PHI_P + self.b*PSI_P
             return op.partial_transpose(phi3 * op.adjoint(phi3))
 
@@ -262,6 +270,7 @@ class RiccardiWitness:
             if theta is not None:
                 phi4 = np.cos(theta)*PHI_M + np.sin(theta)*PSI_M
             else:
+                assert self.angles is not None, "ERROR: no theta given"
                 phi4 = self.a*PHI_M + self.b*PSI_M
             return op.partial_transpose(phi4 * op.adjoint(phi4))
         
@@ -275,6 +284,7 @@ class RiccardiWitness:
             if theta is not None:
                 phi5 = np.cos(theta)*PHI_P + np.sin(theta)*PSI_M
             else:
+                assert self.angles is not None, "ERROR: no theta given"
                 phi5 = self.a*PHI_P + 1j*self.b*PSI_M
             return op.partial_transpose(phi5 * op.adjoint(phi5))
         
@@ -288,6 +298,7 @@ class RiccardiWitness:
             if theta is not None:
                 phi6 = np.cos(theta)*PHI_M + np.sin(theta)*PSI_P
             else:
+                assert self.angles is not None, "ERROR: no theta given"
                 phi6 = self.a*PHI_M + 1j*self.b*PSI_P
             return op.partial_transpose(phi6 * op.adjoint(phi6))
         
@@ -365,60 +376,9 @@ class RiccardiWitness:
         for i, w in enumerate(ws):
             vals[i] = np.trace(w @ self.rho).real
         return vals
-    
-    # TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
-    #       FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
-    def minimize_witnesses(self):
-        """
-        Calculates the minimum expectation values for each of the 6 witnesses
-        with the given density matrix (self.rho)
-
-        Returns: (min_thetas, min_vals)
-            min_thetas - a list of the thetas corresponding to the minimum expectation values
-            min_vals   - a list of the minimum expectation values
-            NOTE: These are listed in the order of the witnesses (i.e. W1 first and W6 last)
-        """
-        min_thetas = []
-        min_vals = []
-        all_W = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
-
-        # Convert witness matrix function to TensorFlow
-        def witness_matrix_tf(w):
-            return tf.convert_to_tensor(w, dtype=tf.float64)
-
-        # Convert density matrix to TensorFlow
-        rho_tf = tf.convert_to_tensor(self.rho, dtype=tf.float64)
-
-        # Loss function is tr(W @ rho)
-        def loss(W, theta):
-            witness = witness_matrix_tf(W(theta))
-            return tf.linalg.trace(tf.matmul(witness, rho_tf))
-
-        # Optimize using gradient descent
-        optimizer = tf.optimizers.SGD(learning_rate=0.1) # stochastic gradient descent
-
-        # initial guess
-        theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
-
-        for i, W in enumerate(all_W):
-            theta.assign(np.random.uniform(0, np.pi)) # initial guess
-
-            for _ in range(100):  # Run optimization with 100 iterations
-                with tf.GradientTape() as tape:
-                    loss_value = loss(W, theta)
-                grad = tape.gradient(loss_value, theta)
-
-                if grad is not None:  # Check if gradient exists (avoid NoneType errors)
-                    optimizer.apply_gradients([(grad, theta)])
-                    theta.assign(tf.clip_by_value(theta, 0.0, np.pi))  # Enforce bounds
-
-            min_thetas.append(theta.numpy())
-            min_vals.append(np.trace(W(theta) @ self.rho))
-        
-        return (min_thetas, min_vals)
 
 
-class Wp(RiccardiWitness):
+class W5(W3):
     """
     W' witnesses, calculated with Paco's rotations
 
@@ -437,7 +397,7 @@ class Wp(RiccardiWitness):
     def __init__(self, angles, rho=None, counts=None, expt=True):
         assert len(angles) == 3, "ERROR: 3 angles must be provided (theta, alpha, beta)"
 
-        super().__init__(angles[0], rho=rho, counts=counts, expt=expt)
+        super().__init__([angles[0]], rho=rho, counts=counts, expt=expt)
         self.angles = angles
         self.alpha = angles[1]
         self.beta = angles[2]

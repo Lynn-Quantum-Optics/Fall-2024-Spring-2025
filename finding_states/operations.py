@@ -74,7 +74,7 @@ def rotate_m(m, n):
 
 # TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
 #       FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
-def minimize_witnesses(witness_class, rho):
+def minimize_witnesses(witness_class, angles, rho):
     """
     Calculates the minimum expectation values for each the witnesses specified
     in a given witness class for a given density matrix
@@ -83,6 +83,7 @@ def minimize_witnesses(witness_class, rho):
 
     Params:
         witness_class - a class of witnesses (possible values: W3, W5, W7, W8)
+        angles        - the angles used for rotations
         rho           - the density matrix
         TODO: The W7 and W8 witnesses have not been implemented yet
 
@@ -93,7 +94,7 @@ def minimize_witnesses(witness_class, rho):
     """
     min_thetas = []
     min_vals = []
-    ws = witness_class([np.pi/2]*3, rho=rho).get_witnesses()
+    ws = witness_class(angles, rho).get_witnesses()
 
     # Convert witness matrix function to TensorFlow
     def witness_matrix_tf(w):
