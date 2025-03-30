@@ -71,7 +71,26 @@ def rotate_m(m, n):
 ##################
 ## MINIMIZATION
 ##################
+
+# TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
+#       FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
 def minimize_witnesses(witness_class, rho):
+    """
+    Calculates the minimum expectation values for each the witnesses specified
+    in a given witness class for a given density matrix
+
+    NOTE: currently only works with theoretical data
+
+    Params:
+        witness_class - a class of witnesses (possible values: W3, W5, W7, W8)
+        rho           - the density matrix
+        TODO: The W7 and W8 witnesses have not been implemented yet
+
+    Returns: (min_thetas, min_vals)
+        min_thetas - a list of the thetas corresponding to the minimum expectation values
+        min_vals   - a list of the minimum expectation values
+        NOTE: These are listed in the order of the witnesses (e.g. W3_1 first and W5_9 last)
+    """
     min_thetas = []
     min_vals = []
     ws = witness_class([np.pi/2]*3, rho=rho).get_witnesses()
