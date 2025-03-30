@@ -1,5 +1,5 @@
 import numpy as np
-import finding_states.states_and_witnesses as states
+import states_and_witnesses as states
 
 def adjoint(state):
     """
@@ -42,15 +42,15 @@ def partial_transpose(rho, subsys='B'):
 # Rotation operations
 def rotate_z(m, theta):
     """Rotate matrix m by theta about the z axis"""
-    return gates.R_z(theta) @ m @ adjoint(gates.R_z(theta))
+    return states.R_z(theta) @ m @ adjoint(states.R_z(theta))
 
 def rotate_x(m, theta):
     """Rotate matrix m by theta about the x axis"""
-    return gates.R_x(theta) @ m @ adjoint(gates.R_x(theta))
+    return states.R_x(theta) @ m @ adjoint(states.R_x(theta))
 
 def rotate_y(m, theta):
     """Rotate matrix m by theta about the y axis"""
-    return gates.R_y(theta) @ m @ adjoint(gates.R_y(theta))
+    return states.R_y(theta) @ m @ adjoint(states.R_y(theta))
 
 def rotate_m(m, n):
     """

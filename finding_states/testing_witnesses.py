@@ -28,7 +28,7 @@ from uncertainties import ufloat
 from uncertainties import unumpy as unp
 
 # Original code adapted from Oscar Scholin in Summer 2023
-from sample_rho import *
+from finding_states.legacy_sample_rho import *
 from finding_states.legacy_rho_methods import *
 
 ####### Helper methods for rho creation

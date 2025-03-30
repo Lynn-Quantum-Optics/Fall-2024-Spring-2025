@@ -10,8 +10,8 @@ import random
 from uncertainties import ufloat
 from uncertainties import unumpy as unp
 
-from finding_states.sample_rho import *
-from finding_states.rho_methods import *
+from finding_states.legacy_sample_rho import *
+from finding_states.legacy_rho_methods import *
 
 # set path
 current_path = dirname(abspath(__file__))

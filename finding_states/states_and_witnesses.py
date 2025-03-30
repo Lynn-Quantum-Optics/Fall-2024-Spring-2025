@@ -27,17 +27,10 @@ PHI_M_RHO = op.get_rho(PHI_M)
 PSI_P_RHO = op.get_rho(PSI_P)
 PSI_M_RHO = op.get_rho(PSI_M)
 
-### Werner States ###
-def werner(p):
-    """
-    Returns Werner state with parameter p
-    """
-    return p*PHI_P + (1-p)*np.eye(4)/4
-
 ### Eritas's States (see spring 2023 writeup) ###
-def E_PSI(eta, chi, rho = False):
+def E0_PSI(eta, chi, rho = False):
     """
-    Returns the state cos(eta)PSI_P + e^(i*chi)*sin(eta)PSI_M
+    Returns the state of form cos(eta)PSI_P + e^(i*chi)*sin(eta)PSI_M
     as either a density matrix or vector state
 
     Params:
@@ -51,9 +44,9 @@ def E_PSI(eta, chi, rho = False):
         return op.get_rho(state)
     return state
 
-def E_PHI(eta, chi, rho = False):
+def E0_PHI(eta, chi, rho = False):
     """
-    Returns the state cos(eta)PHI_P + e^(i*chi)*sin(eta)PHI_M
+    Returns the state of form cos(eta)PHI_P + e^(i*chi)*sin(eta)PHI_M
     as either a density matrix or vector state
 
     Params:
@@ -66,8 +59,50 @@ def E_PHI(eta, chi, rho = False):
         return op.get_rho(state)
     return state
 
-## TODO: LOOK AT SUMMER 2024 PAPER DRAFT FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
+def E1(eta, chi, rho = False):
+    """
+    Returns the state of the form 
+    1/sqrt(2) * (cos(eta)*(PSI_P + iPSI_M) + e^(i*chi)*sin(eta)*(PHI_P + iPHI_M))
+    as either a density matrix or vector state
 
+    Params:
+    eta, chi       - parameters of the state
+    rho (optional) - if true, return state as a density matrix, 
+                     return as vector otherwise
+    """
+    state = 1/np.sqrt(2) * (np.cos(eta)*(PSI_P + PSI_M*1j) + np.sin(eta)*np.exp(chi*1j)*(PHI_P + PHI_M*1j))
+    if rho:
+        return op.get_rho(state)
+    return state
+
+### Werner States ###
+def werner(p):
+    """
+    Returns Werner state with parameter p
+    """
+    return p*PHI_P + (1-p)*np.eye(4)/4
+
+### Amplitude Damped States ###
+def ADS(gamma):
+    """
+    Returns the amplitude damped state with parameter gamma
+    """
+    return np.array([[.5, 0, 0, .5*np.sqrt(1-gamma)], 
+                     [0, 0, 0, 0], [0, 0, .5*gamma, 0], 
+                     [.5*np.sqrt(1-gamma), 0, 0, .5-.5*gamma]])
+
+### Sample state to illustrate power of W5 over W3 ###
+def sample_state(phi):
+    """
+    Returns a state with parameter phi
+    """
+    H = np.array([1,0]).reshape((2,1))
+    V = np.array([0,1]).reshape((2,1))
+    D = 1/np.sqrt(2) * np.array([1,1]).reshape((2,1))
+    A = 1/np.sqrt(2) * np.array([1,-1]).reshape((2,1))
+    
+    ex1 = np.cos(phi)*np.kron(H,D) - np.sin(phi)*np.kron(V,A)
+    return op.get_rho(ex1)
 
 ##################
 ## MATRICES
@@ -325,8 +360,18 @@ class RiccardiWitness:
         
         return vals
     
-    # TODO: Review this
+    # TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
+    #       FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
     def minimize_witnesses(self):
+        """
+        Calculates the minimum expectation values for each of the 6 witnesses
+        with the given density matrix (self.rho)
+
+        Returns: (min_thetas, min_vals)
+            min_thetas - a list of the thetas corresponding to the minimum expectation values
+            min_vals   - a list of the minimum expectation values
+            NOTE: These are listed in the order of the witnesses (i.e. W1 first and W6 last)
+        """
         min_thetas = []
         min_vals = []
         all_W = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
