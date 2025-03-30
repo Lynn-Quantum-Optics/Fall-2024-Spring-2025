@@ -90,7 +90,7 @@ def gradient_descent(guess, num_params, expt, counts, W, zeta=0.7, num_reps = 50
         zeta: learning rate 
         num_reps: int, number of times to run the optimization
     Returns:
-        an InitGuess object that represents the optimized W
+        guess: an InitGuess object that represents the optimized W
     """
     x0 = guess.x0
     w_min_val = guess.w_min_val
@@ -125,6 +125,19 @@ def gradient_descent(guess, num_params, expt, counts, W, zeta=0.7, num_reps = 50
     return guess
 
 def optimize_Ws(all_W, expt, counts, return_params):
+    """
+    Minimizes all of the witness expectation values using scipy and gradient descent
+
+    Params:
+        all_W: the list of all Ws and W's to minimize
+        expt: whether the input is experimental data
+        counts: given if we want to just use raw counts, or calculate experimental rho
+        return_params: whether we want to return the params we used to get minimized Ws
+    Returns:
+        (W_expec_vals, min_params)
+        W_expec_vals: the list of all minimized W expectation values,
+        min_params: the list of all params used to get minimized Ws
+    """
     W_expec_vals = []
     min_params = []
 
@@ -172,7 +185,7 @@ def optimize_Ws(all_W, expt, counts, return_params):
             min_params.append(minimized_W.w_min_params)
         else:
             W_expec_vals.append(minimized_W.w_min_val)
-        return W_expec_vals
+        return (W_expec_vals, min_params)
 
 def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_counts = False, 
                       expt_purity = None, model=None, optimize = True, gd=True, ads_test=False, return_all=False, 
@@ -271,7 +284,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
 
         # Optimization
         all_W = [get_W1,get_W2, get_W3, get_W4, get_W5, get_W6, get_Wp1, get_Wp2, get_Wp3, get_Wp4, get_Wp5, get_Wp6, get_Wp7, get_Wp8, get_Wp9]
-        W_expec_vals = optimize_Ws(all_W, expt, counts, return_params)
+        (W_expec_vals, min_params) = optimize_Ws(all_W, expt, counts, return_params)
         W_min = np.real(min(W_expec_vals[:6]))
         
         try:
@@ -480,7 +493,7 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
             
             # Same optimization (essentially) as for experimental
             all_W = [get_W1,get_W2, get_W3, get_W4, get_W5, get_W6, get_Wp1, get_Wp2, get_Wp3, get_Wp4, get_Wp5, get_Wp6, get_Wp7, get_Wp8, get_Wp9]
-            W_expec_vals = optimize_Ws(all_W, expt, counts, return_params)
+            (W_expec_vals, min_params) = optimize_Ws(all_W, expt, counts, return_params)
             W_min = np.real(min(W_expec_vals[:6]))
             # print('W', np.round(W_expec_vals[:6], 3))
             # print('W\'', np.round(W_expec_vals[6:], 3))
