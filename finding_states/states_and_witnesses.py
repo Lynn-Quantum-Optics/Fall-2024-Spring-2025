@@ -239,7 +239,7 @@ class RiccardiWitness:
                 phi2 = self.a*PSI_P + self.b*PSI_M
             return op.partial_transpose(phi2 * op.adjoint(phi2))
         
-    def W3(self, theta):
+    def W3(self, theta = None):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[5] + 
                          (self.a**2 - self.b**2)*self.stokes[15] + 
@@ -252,7 +252,7 @@ class RiccardiWitness:
                 phi3 = self.a*PHI_P + self.b*PSI_P
             return op.partial_transpose(phi3 * op.adjoint(phi3))
 
-    def W4(self, theta):
+    def W4(self, theta = None):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[5] + 
                          (self.a**2 - self.b**2)*self.stokes[15] - 
@@ -265,7 +265,7 @@ class RiccardiWitness:
                 phi4 = self.a*PHI_M + self.b*PSI_M
             return op.partial_transpose(phi4 * op.adjoint(phi4))
         
-    def W5(self, theta):
+    def W5(self, theta = None):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[10] + 
                          (self.a**2 - self.b**2)*self.stokes[15] + 
@@ -278,7 +278,7 @@ class RiccardiWitness:
                 phi5 = self.a*PHI_P + 1j*self.b*PSI_M
             return op.partial_transpose(phi5 * op.adjoint(phi5))
         
-    def W6(self, theta):
+    def W6(self, theta = None):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[10] + 
                          (self.a**2 - self.b**2)*self.stokes[15] - 
@@ -338,26 +338,32 @@ class RiccardiWitness:
         
         return stokes
 
-    def get_witnesses(self):
+    def get_witnesses(self, ops=True):
         """
-        Returns the value to be minimized to find the expectation value of W
+        Returns the expectation values of the witnesses using the given parameter (self.theta)
+        or the operators themselves
 
         Params:
-            w   - the witness matrix
-            rho - the density matrix
+        ops (optional) - if true, return the witness operators, return expectation values otherwise
+        NOTE: ops is true by default
         """
-        ws = [self.W1(), self.W2(), self.W3(), self.W4(), self.W5(), self.W6()]
+        ws = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
         vals = [None for i in range(len(ws))]
+
+        ## Return the operators
+        if ops:
+            return ws
+
+        ## Return the expectation values
+        ws = [w() for w in ws]
 
         # When we don't want to use rho
         if self.counts and not self.expt:
-            return ws
+            return [w() for w in ws]
         
-        # We use rho
-        else: 
-            for i, w in enumerate(ws):
-                vals[i] = np.trace(w @ self.rho).real
-        
+        # When we use rho
+        for i, w in enumerate(ws):
+            vals[i] = np.trace(w @ self.rho).real
         return vals
     
     # TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
@@ -436,60 +442,71 @@ class Wp(RiccardiWitness):
         self.alpha = angles[1]
         self.beta = angles[2]
 
-    def Wp1(self):
-        w1 = super().W1()
+    def Wp1(self, theta=None):
+        w1 = super().W1(theta)
         rotation = np.kron(R_z(self.alpha), IDENTITY)
         return op.rotate_m(w1, rotation)
     
-    def Wp2(self):
-        w2 = super().W2()
+    def Wp2(self, theta=None):
+        w2 = super().W2(theta)
         rotation = np.kron(R_z(self.alpha), IDENTITY)
         return op.rotate_m(w2, rotation)
     
-    def Wp3(self):
-        w3 = super().W3()
+    def Wp3(self, theta=None):
+        w3 = super().W3(theta)
         rotation = np.kron(R_z(self.alpha), R_z(self.beta))
         return op.rotate_m(w3, rotation)
     
-    def Wp4(self):
-        w3 = super().W3()
+    def Wp4(self, theta=None):
+        w3 = super().W3(theta)
         rotation = np.kron(R_x(self.alpha), IDENTITY)
         return op.rotate_m(w3, rotation)
     
-    def Wp5(self):
-        w4 = super().W4()
+    def Wp5(self, theta=None):
+        w4 = super().W4(theta)
         rotation = np.kron(R_x(self.alpha), IDENTITY)
         return op.rotate_m(w4, rotation)
     
-    def Wp6(self):
-        w1 = super().W1()
+    def Wp6(self, theta=None):
+        w1 = super().W1(theta)
         rotation = np.kron(R_x(self.alpha), R_y(self.beta))
         return op.rotate_m(w1, rotation)
     
-    def Wp7(self):
-        w5 = super().W5()
+    def Wp7(self, theta=None):
+        w5 = super().W5(theta)
         rotation = np.kron(R_y(self.alpha), IDENTITY)
         return op.rotate_m(w5, rotation)
     
-    def Wp8(self):
-        w6 = super().W6()
+    def Wp8(self, theta=None):
+        w6 = super().W6(theta)
         rotation = np.kron(R_y(self.alpha), IDENTITY)
         return op.rotate_m(w6, rotation)
 
-    def Wp9(self):
-        w1 = super().W1()
+    def Wp9(self, theta=None):
+        w1 = super().W1(theta)
         rotation = np.kron(R_y(self.alpha), R_y(self.beta))
         return op.rotate_m(w1, rotation)
     
-    def minimize_witnesses(self):
-        min_thetas, min_vals = super().minimize_witnesses()
-
-        all_Wp = [self.Wp1, self.Wp2, self.Wp3, 
-                  self.Wp4, self.Wp5, self.Wp6, 
-                  self.Wp7, self.Wp8, self.Wp9]
+    def get_witnesses(self, ops=True):
+        ws = super().get_witnesses(ops)
+        ws += [self.Wp1, self.Wp2, self.Wp3, 
+               self.Wp4, self.Wp5, self.Wp6,
+               self.Wp7, self.Wp8, self.Wp9]
+        vals = [None for i in range(len(ws))]
         
-        # Wp3,6,9 have 3, the rest of 2
-        return (min_thetas, min_vals)
+        # Return operators
+        if ops:
+            return ws
+        
+        ## Return expectation values
+        ws = [w() for w in ws]
+        if self.counts and not self.expt:
+            return [w() for w in ws]
+
+        for i, w in enumerate(ws):
+            vals[i] = np.trace(w @ self.rho).real        
+        return vals
+
     
     def __str__(self):
         return (

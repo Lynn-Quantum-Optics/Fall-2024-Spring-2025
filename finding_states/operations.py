@@ -1,6 +1,10 @@
 import numpy as np
 import states_and_witnesses as states
+import tensorflow as tf
 
+#########################################
+## State & Density Matrix Operations
+#########################################
 def adjoint(state):
     """
     Returns the adjoint of a state vector
@@ -31,13 +35,12 @@ def partial_transpose(rho, subsys='B'):
     b3 = rho[2:, :2]
     b4 = rho[2:, 2:]
 
-    PT = np.matrix(np.block([[b1.T, b2.T], [b3.T, b4.T]]))
+    PT = np.array(np.block([[b1.T, b2.T], [b3.T, b4.T]]))
 
     if subsys=='B':
         return PT
     elif subsys=='A':
         return PT.T
-
 
 # Rotation operations
 def rotate_z(m, theta):
@@ -59,10 +62,56 @@ def rotate_m(m, n):
     Params:
     m - the matrix to be rotated
     n - the matrix that is doing the rotation (i.e. R_z)
+
     NOTE: m and n must be of the same size
     """
     return n @ m @ adjoint(n)
 
+
+##################
+## MINIMIZATION
+##################
+def minimize_witnesses(witness_class, rho):
+    min_thetas = []
+    min_vals = []
+    ws = witness_class([np.pi/2]*3, rho=rho).get_witnesses()
+
+    # Convert witness matrix function to TensorFlow
+    def witness_matrix_tf(w):
+        return tf.convert_to_tensor(w, dtype=tf.float64)
+    
+    # Convert density matrix to TensorFlow
+    rho_tf = tf.convert_to_tensor(rho, dtype=tf.float64)
+
+    def loss(W, theta):
+        """
+        Loss function for minimization: tr(W @ rho)
+        """
+        witness = witness_matrix_tf(W(theta))
+        return tf.linalg.trace(tf.matmul(witness, rho_tf))
+    
+    # Optimize using gradient descent
+    optimizer = tf.optimizers.SGD(learning_rate=0.1) # stochastic gradient descent
+
+    # initial guess
+    theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+
+    for i, W in enumerate(ws):
+            theta.assign(np.random.uniform(0, np.pi)) # initial guess
+
+            for _ in range(100):  # Run optimization with 100 iterations
+                with tf.GradientTape() as tape:
+                    loss_value = loss(W, theta)
+                grad = tape.gradient(loss_value, theta)
+
+                if grad is not None:  # Check if gradient exists (avoid NoneType errors)
+                    optimizer.apply_gradients([(grad, theta)])
+                    theta.assign(tf.clip_by_value(theta, 0.0, np.pi))  # Enforce bounds
+
+            min_thetas.append(theta.numpy())
+            min_vals.append(np.trace(W(theta) @ rho))
+
+    return (min_thetas, min_vals)
 
 if __name__ == "__main__":
     theta = np.pi/2
