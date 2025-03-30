@@ -2,30 +2,82 @@ import numpy as np
 import operations as op
 import tensorflow as tf
 
-### Jones Vectors ###
+
+#######################
+## QUANTUM STATES
+#######################
+
+### Jones/Column Vectors & Density Matrices ###
 HH = np.array([1, 0, 0, 0]).reshape((4,1))
 HV = np.array([0, 1, 0, 0]).reshape((4,1))
 VH = np.array([0, 0, 1, 0]).reshape((4,1))
 VV = np.array([0, 0, 0, 1]).reshape((4,1))
+HH_RHO = op.get_rho(HH)
+HV_RHO = op.get_rho(HV)
+VH_RHO = op.get_rho(VH)
+VV_RHO = op.get_rho(VV)
 
-### Pauli Gates ###
-PAULI_X = np.array([[0,1], [1, 0]])
-PAULI_Y = np.array([[0, -1j], [1j, 0]])
-PAULI_Z = np.array([[1,0], [0,-1]])
-IDENTITY = np.array([[1,0], [0,1]])
-
-### Bell States ###
+### Bell States & Density Matrices ###
 PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)]).reshape((4,1))
 PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)]).reshape((4,1))
 PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0]).reshape((4,1))
 PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0]).reshape((4,1))
+PHI_P_RHO = op.get_rho(PHI_P)
+PHI_M_RHO = op.get_rho(PHI_M)
+PSI_P_RHO = op.get_rho(PSI_P)
+PSI_M_RHO = op.get_rho(PSI_M)
+
+### Werner States ###
+def werner(p):
+    """
+    Returns Werner state with parameter p
+    """
+    return p*PHI_P + (1-p)*np.eye(4)/4
+
+### Eritas's States (see spring 2023 writeup) ###
+def E_PSI(eta, chi, rho = False):
+    """
+    Returns the state cos(eta)PSI_P + e^(i*chi)*sin(eta)PSI_M
+    as either a density matrix or vector state
+
+    Params:
+    eta, chi       - parameters of the state
+    rho (optional) - if true, return state as a density matrix, 
+                     return as vector otherwise
+    """
+    state = np.cos(eta)*PSI_P + np.exp(chi*1j)*np.sin(eta)*PSI_M
+
+    if rho:
+        return op.get_rho(state)
+    return state
+
+def E_PHI(eta, chi, rho = False):
+    """
+    Returns the state cos(eta)PHI_P + e^(i*chi)*sin(eta)PHI_M
+    as either a density matrix or vector state
+
+    Params:
+    eta, chi       - parameters of the state
+    rho (optional) - if true, return state as a density matrix, 
+                     return as vector otherwise
+    """
+    state = np.cos(eta)*PHI_P + np.exp(chi*1j)*np.sin(eta)*PHI_M
+    if rho:
+        return op.get_rho(state)
+    return state
+
+## TODO: LOOK AT SUMMER 2024 PAPER DRAFT FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
 
 
-### Test States ###
+##################
+## MATRICES
+##################
 
-
-### Problem States ###
-
+### Pauli Matrices ###
+PAULI_X = np.array([[0,1], [1, 0]])
+PAULI_Y = np.array([[0, -1j], [1j, 0]])
+PAULI_Z = np.array([[1,0], [0,-1]])
+IDENTITY = np.array([[1,0], [0,1]])
 
 ### Rotation Matrices ###
 #
@@ -43,6 +95,10 @@ def R_y(theta):
     return np.array([[np.cos(theta/2), -(np.sin(theta/2))],
                     [np.sin(theta/2), (np.cos(theta/2))]])
 
+
+###########################
+## ENTANGLEMENT WITNESSES
+###########################
 
 ## Keep track of count indices
 # int to str, i.e. COUNT[0] = 'HH'
@@ -112,6 +168,13 @@ class RiccardiWitness:
         self.b = np.sin(self.theta)
 
     def W1(self, theta=None):
+        """
+        The first W^3 witness
+
+        Params:
+        theta - a theta to override the class parameter theta primarily
+                used for minimization
+        """
         # expectation value (for when we don't want to use full tomography)
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[15] + 
@@ -262,8 +325,8 @@ class RiccardiWitness:
         
         return vals
     
-    # TODO: Review this, it's from ChatGPT
-    def tf_minimize(self):
+    # TODO: Review this
+    def minimize_witnesses(self):
         min_thetas = []
         min_vals = []
         all_W = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
@@ -275,14 +338,13 @@ class RiccardiWitness:
         # Convert density matrix to TensorFlow
         rho_tf = tf.convert_to_tensor(self.rho, dtype=tf.float64)
 
-        # Define loss function
+        # Loss function is tr(W @ rho)
         def loss(W, theta):
             witness = witness_matrix_tf(W(theta))
             return tf.linalg.trace(tf.matmul(witness, rho_tf))
 
         # Optimize using gradient descent
-        optimizer = tf.optimizers.SGD(learning_rate=0.1) # stochastic gradient descent, note learning rate was 0.7
-
+        optimizer = tf.optimizers.SGD(learning_rate=0.1) # stochastic gradient descent
 
         # initial guess
         theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
@@ -290,14 +352,14 @@ class RiccardiWitness:
         for i, W in enumerate(all_W):
             theta.assign(np.random.uniform(0, np.pi)) # initial guess
 
-            for _ in range(100):  # Run optimization, original has 50 iterations
+            for _ in range(100):  # Run optimization with 100 iterations
                 with tf.GradientTape() as tape:
                     loss_value = loss(W, theta)
                 grad = tape.gradient(loss_value, theta)
 
                 if grad is not None:  # Check if gradient exists (avoid NoneType errors)
                     optimizer.apply_gradients([(grad, theta)])
-                    self.theta.assign(tf.clip_by_value(theta, 0.0, np.pi))  # Enforce bounds
+                    theta.assign(tf.clip_by_value(theta, 0.0, np.pi))  # Enforce bounds
 
             min_thetas.append(theta.numpy())
             min_vals.append(np.trace(W(theta) @ self.rho))
@@ -374,6 +436,16 @@ class Wp(RiccardiWitness):
         rotation = np.kron(R_y(self.alpha), R_y(self.beta))
         return op.rotate_m(w1, rotation)
     
+    def minimize_witnesses(self):
+        min_thetas, min_vals = super().minimize_witnesses()
+
+        all_Wp = [self.Wp1, self.Wp2, self.Wp3, 
+                  self.Wp4, self.Wp5, self.Wp6, 
+                  self.Wp7, self.Wp8, self.Wp9]
+        
+        # Wp3,6,9 have 3, the rest of 2
+        return (min_thetas, min_vals)
+    
     def __str__(self):
         return (
             f'Parameter: {self.param}\n'
@@ -382,8 +454,6 @@ class Wp(RiccardiWitness):
         )
 
 
-##########
-## TESTS
-##########
+
 if __name__ == '__main__':
-    print("States and Gates Loaded.")
+    print("States, Matrices, and Witnesses Loaded.")
