@@ -79,8 +79,6 @@ def minimize_witnesses(witness_class, angles, rho=None, counts=None):
     Calculates the minimum expectation values for each the witnesses specified
     in a given witness class for a given density matrix
 
-    NOTE: currently only works with theoretical data
-
     Params:
         witness_class - a class of witnesses (possible values: W3, W5, W7, W8)
         angles        - the angles used for rotations
