@@ -1,10 +1,19 @@
 import numpy as np
-import states_and_witnesses as states
+import finding_states.states_and_witnesses as states
 import tensorflow as tf
 
 #########################################
 ## State & Density Matrix Operations
 #########################################
+def ket(state):
+    """
+    Return the given state (represented as an array) as a ket
+
+    Example: ket([1, 0]) -> [[1]
+                             [0]]
+    """
+    return np.array(state, dtype=complex).reshape(-1,1)
+
 def adjoint(state):
     """
     Returns the adjoint of a state vector

@@ -1,27 +1,34 @@
 import numpy as np
-import operations as op
+import finding_states.operations as op
 import tensorflow as tf
-
 
 #######################
 ## QUANTUM STATES
 #######################
 
+# Single-qubit States
+H = op.ket([1,0])
+V = op.ket([0,1])
+R = op.ket([1/np.sqrt(2) * 1, 1/np.sqrt(2) * (-1j)])
+L = op.ket([1/np.sqrt(2) * 1, 1/np.sqrt(2) * (1j)])
+D = op.ket([1/np.sqrt(2) * 1, 1/np.sqrt(2) * (1)])
+A = op.ket([1/np.sqrt(2) * 1, 1/np.sqrt(2) * (-1)])
+
 ### Jones/Column Vectors & Density Matrices ###
-HH = np.array([1, 0, 0, 0]).reshape((4,1))
-HV = np.array([0, 1, 0, 0]).reshape((4,1))
-VH = np.array([0, 0, 1, 0]).reshape((4,1))
-VV = np.array([0, 0, 0, 1]).reshape((4,1))
+HH = op.ket([1, 0, 0, 0])
+HV = op.ket([0, 1, 0, 0])
+VH = op.ket([0, 0, 1, 0])
+VV = op.ket([0, 0, 0, 1])
 HH_RHO = op.get_rho(HH)
 HV_RHO = op.get_rho(HV)
 VH_RHO = op.get_rho(VH)
 VV_RHO = op.get_rho(VV)
 
 ### Bell States & Density Matrices ###
-PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)]).reshape((4,1))
-PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)]).reshape((4,1))
-PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0]).reshape((4,1))
-PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0]).reshape((4,1))
+PHI_P = (HH + VV)/np.sqrt(2)
+PHI_M = (HH - VV)/np.sqrt(2)
+PSI_P = (HV + VH)/np.sqrt(2)
+PSI_M = (HV - VH)/np.sqrt(2)
 PHI_P_RHO = op.get_rho(PHI_P)
 PHI_M_RHO = op.get_rho(PHI_M)
 PSI_P_RHO = op.get_rho(PSI_P)
@@ -75,12 +82,6 @@ def E1(eta, chi, rho = False):
         return op.get_rho(state)
     return state
 
-### Werner States ###
-def werner(p):
-    """
-    Returns Werner state with parameter p
-    """
-    return p*PHI_P + (1-p)*np.eye(4)/4
 
 ### Amplitude Damped States ###
 def ADS(gamma):
@@ -96,11 +97,6 @@ def sample_state(phi):
     """
     Returns a state with parameter phi
     """
-    H = np.array([1,0]).reshape((2,1))
-    V = np.array([0,1]).reshape((2,1))
-    D = 1/np.sqrt(2) * np.array([1,1]).reshape((2,1))
-    A = 1/np.sqrt(2) * np.array([1,-1]).reshape((2,1))
-    
     ex1 = np.cos(phi)*np.kron(H,D) - np.sin(phi)*np.kron(V,A)
     return op.get_rho(ex1)
 
