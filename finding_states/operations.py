@@ -2,6 +2,9 @@ import numpy as np
 import finding_states.states_and_witnesses as states
 import tensorflow as tf
 
+## NOTE: Be sure to import states_and_witnesses before this file
+##       when working in a REPL (e.g. ipython) or notebook
+
 #########################################
 ## State & Density Matrix Operations
 #########################################
@@ -105,10 +108,10 @@ def minimize_witnesses(witness_class, angles, rho=None, counts=None):
 
     # Convert witness matrix function to TensorFlow
     def witness_matrix_tf(w):
-        return tf.convert_to_tensor(w, dtype=tf.float64)
+        return tf.convert_to_tensor(w, dtype=tf.complex64)
     
     # Convert density matrix to TensorFlow
-    rho_tf = tf.convert_to_tensor(rho, dtype=tf.float64)
+    rho_tf = tf.convert_to_tensor(rho, dtype=tf.complex64)
 
     def loss(W, theta):
         """
