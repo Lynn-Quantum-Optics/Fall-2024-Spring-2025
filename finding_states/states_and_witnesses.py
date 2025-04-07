@@ -144,7 +144,6 @@ class W3:
     W3 (Riccardi) witnesses. These use local measurements on 3 Pauli bases.
 
     Attributes: 
-    angles (optional) - a list containing the parameter for the rank-1 projector (theta)
     rho (optional)    - the density matrix for the entangled photon state
     counts (optional) - np array of photon counts and uncertainties from experimental data
     expt              - whether or not to calculate the experimental density matrix using counts
@@ -154,18 +153,10 @@ class W3:
     NOTE: If rho is given, theoretical calculations will be used
     NOTE: expt is True by default
     """
-    def __init__(self, angles, rho = None, counts=None, expt=True):
+    def __init__(self, rho = None, counts=None, expt=True):
         self.counts = counts
         self.expt = expt
-        self.angles = angles
-
-        assert len(angles) == 1, "ERROR: only one angle (theta) should be given"
-        self.theta = angles[0]
             
-        # rank-1 projector parameters
-        self.a = np.cos(self.theta)
-        self.b = np.sin(self.theta)
-
         # counts not given, so we want to use the given theoretical rho
         if not counts:
             assert rho is not None, "ERROR: counts not given, so rho should be given"
@@ -203,100 +194,91 @@ class W3:
             if expt:
                 self.rho = self.expt_rho()
 
-    def W1(self, theta=None):
+    def W1(self, theta):
         """
-        The first W^3 witness
+        The first W3 witness
 
         Params:
-        theta - a theta to override the class parameter theta primarily
-                used for minimization
+        theta - the parameter for the rank-1 projector
         """
+        a = np.cos(theta)
+        b = np.sin(theta)
+
         # expectation value (for when we don't want to use full tomography)
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[15] + 
-                        (self.a**2 - self.b**2)*self.stokes[5] + 
-                        (self.a**2 - self.b**2)*self.stokes[10] + 
-                        2*self.a*self.b*(self.stokes[12] + self.stokes[3]))
+                        (a**2 - b**2)*self.stokes[5] + 
+                        (a**2 - b**2)*self.stokes[10] + 
+                        2*a*b*(self.stokes[12] + self.stokes[3]))
         
+        # W1 as a matrix (for when we use full tomography & thus have a rho)
+        phi1 = a*PHI_P + b*PHI_M
+        return op.partial_transpose(phi1 * op.adjoint(phi1))
+        
+    def W2(self, theta):
+        a = np.cos(theta)
+        b = np.sin(theta)
 
-        # W1 matrix (for when we use full tomography & calculate rho)
-        else:
-            if theta is not None:
-                phi1 = np.cos(theta)*PHI_P + np.sin(theta)*PHI_M
-            else:
-                assert self.angles is not None, "ERROR: no theta given"
-                phi1 = self.a*PHI_P + self.b*PHI_M
-            return op.partial_transpose(phi1 * op.adjoint(phi1))
-        
-    def W2(self, theta = None):
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[15] + 
-                        (self.a**2 - self.b**2)*self.stokes[5] - 
-                        (self.a**2 - self.b**2)*self.stokes[10] + 
-                        2*self.a*self.b*(self.stokes[12] - self.stokes[3]))
-        else:
-            if theta is not None:
-                phi2 = np.cos(theta)*PSI_P + np.sin(theta)*PSI_M
-            else:
-                assert self.angles is not None, "ERROR: no theta given"
-                phi2 = self.a*PSI_P + self.b*PSI_M
-            return op.partial_transpose(phi2 * op.adjoint(phi2))
+                        (a**2 - b**2)*self.stokes[5] - 
+                        (a**2 - b**2)*self.stokes[10] + 
+                        2*a*b*(self.stokes[12] - self.stokes[3]))
+        
+        phi2 = a*PSI_P + b*PSI_M
+        return op.partial_transpose(phi2 * op.adjoint(phi2))
         
     def W3(self, theta = None):
+        a = np.cos(theta)
+        b = np.sin(theta)
+
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[5] + 
-                         (self.a**2 - self.b**2)*self.stokes[15] + 
-                         (self.a**2 - self.b**2)*self.stokes[10] + 
-                         2*self.a*self.b*(self.stokes[4] + self.stokes[1]))
-        else:
-            if theta is not None:
-                phi3 = np.cos(theta)*PHI_P + np.sin(theta)*PSI_P
-            else:
-                assert self.angles is not None, "ERROR: no theta given"
-                phi3 = self.a*PHI_P + self.b*PSI_P
-            return op.partial_transpose(phi3 * op.adjoint(phi3))
+                         (a**2 - b**2)*self.stokes[15] + 
+                         (a**2 - b**2)*self.stokes[10] + 
+                         2*a*b*(self.stokes[4] + self.stokes[1]))
+        
+        phi3 = a*PHI_P + b*PSI_P
+        return op.partial_transpose(phi3 * op.adjoint(phi3))
 
     def W4(self, theta = None):
+        a = np.cos(theta)
+        b = np.sin(theta)
+
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[5] + 
-                         (self.a**2 - self.b**2)*self.stokes[15] - 
-                         (self.a**2 - self.b**2)*self.stokes[10] - 
-                         2*self.a*self.b*(self.stokes[4] - self.stokes[1]))
-        else:
-            if theta is not None:
-                phi4 = np.cos(theta)*PHI_M + np.sin(theta)*PSI_M
-            else:
-                assert self.angles is not None, "ERROR: no theta given"
-                phi4 = self.a*PHI_M + self.b*PSI_M
-            return op.partial_transpose(phi4 * op.adjoint(phi4))
+                         (a**2 - b**2)*self.stokes[15] - 
+                         (a**2 - b**2)*self.stokes[10] - 
+                         2*a*b*(self.stokes[4] - self.stokes[1]))
+
+        phi4 = a*PHI_M + b*PSI_M
+        return op.partial_transpose(phi4 * op.adjoint(phi4))
         
     def W5(self, theta = None):
+        a = np.cos(theta)
+        b = np.sin(theta)
+
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] + self.stokes[10] + 
-                         (self.a**2 - self.b**2)*self.stokes[15] + 
-                         (self.a**2 - self.b**2)*self.stokes[5] - 
-                         2*self.a*self.b*(self.stokes[8] + self.stokes[2]))
-        else:
-            if theta is not None:
-                phi5 = np.cos(theta)*PHI_P + np.sin(theta)*PSI_M
-            else:
-                assert self.angles is not None, "ERROR: no theta given"
-                phi5 = self.a*PHI_P + 1j*self.b*PSI_M
-            return op.partial_transpose(phi5 * op.adjoint(phi5))
+                         (a**2 - b**2)*self.stokes[15] + 
+                         (a**2 - b**2)*self.stokes[5] - 
+                         2*a*b*(self.stokes[8] + self.stokes[2]))
+
+        phi5 = a*PHI_P + 1j*b*PSI_M
+        return op.partial_transpose(phi5 * op.adjoint(phi5))
         
     def W6(self, theta = None):
+        a = np.cos(theta)
+        b = np.sin(theta)
+
         if self.counts and not self.expt:
             return 0.25*(self.stokes[0] - self.stokes[10] + 
-                         (self.a**2 - self.b**2)*self.stokes[15] - 
-                         (self.a**2 - self.b**2)*self.stokes[5] + 
-                         2*self.a*self.b*(self.stokes[8] - self.stokes[2]))
-        else:
-            if theta is not None:
-                phi6 = np.cos(theta)*PHI_M + np.sin(theta)*PSI_P
-            else:
-                assert self.angles is not None, "ERROR: no theta given"
-                phi6 = self.a*PHI_M + 1j*self.b*PSI_P
-            return op.partial_transpose(phi6 * op.adjoint(phi6))
+                         (a**2 - b**2)*self.stokes[15] - 
+                         (a**2 - b**2)*self.stokes[5] + 
+                         2*a*b*(self.stokes[8] - self.stokes[2]))
+
+        phi6 = a*PHI_M + 1j*b*PSI_P
+        return op.partial_transpose(phi6 * op.adjoint(phi6))
         
     def expt_rho(self):
         """Calculates the theoretical density matrix"""
@@ -345,34 +327,45 @@ class W3:
         
         return stokes
 
-    def get_witnesses(self, ops=True):
+    def get_witnesses(self, ops=True, theta=None):
         """
-        Returns the expectation values of the witnesses using the given parameter (self.theta)
+        Returns the expectation values of all 6 witnesses with a given theta
         or the operators themselves
 
         Params:
-        ops (optional) - if true, return the witness operators, return expectation values otherwise
+        ops (optional)   - if true, return the witness operators as functions, return expectation values otherwise
+        theta (optional) - the theta value to calculate expectation values for when ops is false
+        
         NOTE: ops is true by default
+        NOTE: theta is not given by default
+        NOTE: ops takes precedence over theta, so if ops is true, only the witness operators will be
+              returned (and no expectation values for the given theta, even if theta is given)
         """
         ws = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
-        vals = [None for i in range(len(ws))]
-
-        ## Return the operators
+    
+        ## Return the operators if specified
         if ops:
             return ws
 
-        ## Return the expectation values
-        ws = [w() for w in ws]
+        ## Otherwise, return the expectation values with the given theta
+        ws = [w(theta) for w in ws]
+        vals = []
 
-        # When we don't want to use rho
+        # When we don't have a density matrix
         if self.counts and not self.expt:
-            return [w() for w in ws]
+            return [w(theta) for w in ws]
         
-        # When we use rho
+        # When we do have a density matrix
         for i, w in enumerate(ws):
-            vals[i] = np.trace(w @ self.rho).real
+            vals += [np.trace(w @ self.rho).real]
         return vals
 
+    def __str__(self):
+        return (
+            f'Rho: {self.rho}\n'
+            f'Counts: {self.counts}\n'
+            f'Expt: {self.expt}'
+        )
 
 class W5(W3):
     """
@@ -381,22 +374,21 @@ class W5(W3):
     Attributes:
     counts (optional) - np array of photon counts and uncertainties from experimental data
     rho (optional)    - the density matrix for the entangled photon state
-    expt              - whether or not to calculate the experimental density matrix using counts
+    expt (optional)   - whether or not to calculate the experimental density matrix using counts
     angles            - a list of angles to be used in rotations
-        + angles[0] = theta (rank-1 projector parameter)
-        + angles[1] = alpha
-        + angles[2] = beta
+        + angles[0] = alpha
+        + angles[1] = beta
 
         
-    NOTE: this class inherits from RiccardiWitnesses, so all methods in that class can be used here
+    NOTE: this class inherits from W3, so all methods in that class can be used here, and all notes apply
     """
     def __init__(self, angles, rho=None, counts=None, expt=True):
-        assert len(angles) == 3, "ERROR: 3 angles must be provided (theta, alpha, beta)"
+        assert len(angles) == 2, "ERROR: 2 angles must be provided (alpha, beta)"
 
-        super().__init__([angles[0]], rho=rho, counts=counts, expt=expt)
+        super().__init__(rho=rho, counts=counts, expt=expt)
         self.angles = angles
-        self.alpha = angles[1]
-        self.beta = angles[2]
+        self.alpha = angles[0]
+        self.beta = angles[1]
 
     def Wp1(self, theta=None):
         w1 = super().W1(theta)
@@ -443,32 +435,33 @@ class W5(W3):
         rotation = np.kron(R_y(self.alpha), R_y(self.beta))
         return op.rotate_m(w1, rotation)
     
-    def get_witnesses(self, ops=True):
-        ws = super().get_witnesses(ops)
-        ws += [self.Wp1, self.Wp2, self.Wp3, 
-               self.Wp4, self.Wp5, self.Wp6,
-               self.Wp7, self.Wp8, self.Wp9]
-        vals = [None for i in range(len(ws))]
-        
+    def get_witnesses(self, ops=True, theta=None):
+        w5s = [self.Wp1, self.Wp2, self.Wp3, 
+                self.Wp4, self.Wp5, self.Wp6,
+                self.Wp7, self.Wp8, self.Wp9]
         # Return operators
         if ops:
+            ws = super().get_witnesses()
+            ws += w5s
             return ws
         
         ## Return expectation values
-        ws = [w() for w in ws]
+        vals = super().get_witnesses(ops, theta)
+        w5s = [w(theta) for w in w5s]
         if self.counts and not self.expt:
-            return [w() for w in ws]
+            return vals + w5s
 
-        for i, w in enumerate(ws):
-            vals[i] = np.trace(w @ self.rho).real        
+        for i, w in enumerate(w5s):
+            vals += [np.trace(w @ self.rho).real]
         return vals
 
     
     def __str__(self):
         return (
-            f'Parameter: {self.param}\n'
+            f'Rotation Angles: {self.angles}\n'
+            f'Rho: {self.rho}\n'
             f'Counts: {self.counts}\n'
-            f'Angles: {self.angles}'
+            f'Expt: {self.expt}'
         )
 
 
