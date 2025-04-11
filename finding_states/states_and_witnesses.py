@@ -1,6 +1,5 @@
 import numpy as np
 import finding_states.operations as op
-import tensorflow as tf
 
 #######################
 ## QUANTUM STATES

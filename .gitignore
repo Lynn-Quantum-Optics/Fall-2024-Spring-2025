@@ -1,5 +1,6 @@
 .DS_Store
 py-venv/
+.venv/
 *.pyc
 testing_experiment/
 calibration/
