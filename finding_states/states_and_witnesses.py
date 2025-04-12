@@ -227,7 +227,7 @@ class W3:
         phi2 = a*PSI_P + b*PSI_M
         return op.partial_transpose(phi2 * op.adjoint(phi2))
         
-    def W3(self, theta = None):
+    def W3(self, theta):
         a = np.cos(theta)
         b = np.sin(theta)
 
@@ -240,7 +240,7 @@ class W3:
         phi3 = a*PHI_P + b*PSI_P
         return op.partial_transpose(phi3 * op.adjoint(phi3))
 
-    def W4(self, theta = None):
+    def W4(self, theta):
         a = np.cos(theta)
         b = np.sin(theta)
 
@@ -253,7 +253,7 @@ class W3:
         phi4 = a*PHI_M + b*PSI_M
         return op.partial_transpose(phi4 * op.adjoint(phi4))
         
-    def W5(self, theta = None):
+    def W5(self, theta):
         a = np.cos(theta)
         b = np.sin(theta)
 
@@ -266,7 +266,7 @@ class W3:
         phi5 = a*PHI_P + 1j*b*PSI_M
         return op.partial_transpose(phi5 * op.adjoint(phi5))
         
-    def W6(self, theta = None):
+    def W6(self, theta):
         a = np.cos(theta)
         b = np.sin(theta)
 
@@ -368,70 +368,61 @@ class W3:
 
 class W5(W3):
     """
-    W' witnesses, calculated with Paco's rotations
+    W5 witnesses, calculated with Paco's rotations
 
     Attributes:
-    counts (optional) - np array of photon counts and uncertainties from experimental data
     rho (optional)    - the density matrix for the entangled photon state
+    counts (optional) - np array of photon counts and uncertainties from experimental data
     expt (optional)   - whether or not to calculate the experimental density matrix using counts
-    angles            - a list of angles to be used in rotations
-        + angles[0] = alpha
-        + angles[1] = beta
-
         
     NOTE: this class inherits from W3, so all methods in that class can be used here, and all notes apply
     """
-    def __init__(self, angles, rho=None, counts=None, expt=True):
-        assert len(angles) == 2, "ERROR: 2 angles must be provided (alpha, beta)"
-
+    def __init__(self, rho=None, counts=None, expt=True):
         super().__init__(rho=rho, counts=counts, expt=expt)
-        self.angles = angles
-        self.alpha = angles[0]
-        self.beta = angles[1]
 
-    def Wp1(self, theta=None):
+    def Wp1(self, theta, alpha):
         w1 = super().W1(theta)
-        rotation = np.kron(R_z(self.alpha), IDENTITY)
+        rotation = np.kron(R_z(alpha), IDENTITY)
         return op.rotate_m(w1, rotation)
     
-    def Wp2(self, theta=None):
+    def Wp2(self, theta, alpha):
         w2 = super().W2(theta)
-        rotation = np.kron(R_z(self.alpha), IDENTITY)
+        rotation = np.kron(R_z(alpha), IDENTITY)
         return op.rotate_m(w2, rotation)
     
-    def Wp3(self, theta=None):
+    def Wp3(self, theta, alpha, beta):
         w3 = super().W3(theta)
-        rotation = np.kron(R_z(self.alpha), R_z(self.beta))
+        rotation = np.kron(R_z(alpha), R_z(beta))
         return op.rotate_m(w3, rotation)
     
-    def Wp4(self, theta=None):
+    def Wp4(self, theta, alpha):
         w3 = super().W3(theta)
-        rotation = np.kron(R_x(self.alpha), IDENTITY)
+        rotation = np.kron(R_x(alpha), IDENTITY)
         return op.rotate_m(w3, rotation)
     
-    def Wp5(self, theta=None):
+    def Wp5(self, theta, alpha):
         w4 = super().W4(theta)
-        rotation = np.kron(R_x(self.alpha), IDENTITY)
+        rotation = np.kron(R_x(alpha), IDENTITY)
         return op.rotate_m(w4, rotation)
     
-    def Wp6(self, theta=None):
+    def Wp6(self, theta, alpha, beta):
         w1 = super().W1(theta)
-        rotation = np.kron(R_x(self.alpha), R_y(self.beta))
+        rotation = np.kron(R_x(alpha), R_y(beta))
         return op.rotate_m(w1, rotation)
     
-    def Wp7(self, theta=None):
+    def Wp7(self, theta, alpha):
         w5 = super().W5(theta)
-        rotation = np.kron(R_y(self.alpha), IDENTITY)
+        rotation = np.kron(R_y(alpha), IDENTITY)
         return op.rotate_m(w5, rotation)
     
-    def Wp8(self, theta=None):
+    def Wp8(self, theta, alpha):
         w6 = super().W6(theta)
-        rotation = np.kron(R_y(self.alpha), IDENTITY)
+        rotation = np.kron(R_y(alpha), IDENTITY)
         return op.rotate_m(w6, rotation)
 
-    def Wp9(self, theta=None):
+    def Wp9(self, theta, alpha, beta):
         w1 = super().W1(theta)
-        rotation = np.kron(R_y(self.alpha), R_y(self.beta))
+        rotation = np.kron(R_y(alpha), R_y(beta))
         return op.rotate_m(w1, rotation)
     
     def get_witnesses(self, ops=True, theta=None):
@@ -453,15 +444,6 @@ class W5(W3):
         for i, w in enumerate(w5s):
             vals += [np.trace(w @ self.rho).real]
         return vals
-
-    
-    def __str__(self):
-        return (
-            f'Rotation Angles: {self.angles}\n'
-            f'Rho: {self.rho}\n'
-            f'Counts: {self.counts}\n'
-            f'Expt: {self.expt}'
-        )
 
 
 
