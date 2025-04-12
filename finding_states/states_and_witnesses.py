@@ -283,7 +283,7 @@ class W3:
     def expt_rho(self):
         """Calculates the theoretical density matrix"""
         
-        # Calculate tensor'd Pauli matrices
+        # Get tensor'd Pauli matrices
         pauli = [np.kron(IDENTITY, IDENTITY), np.kron(IDENTITY, PAULI_X), np.kron(IDENTITY, PAULI_Y),
                  np.kron(IDENTITY, PAULI_Z), np.kron(PAULI_X, IDENTITY), np.kron(PAULI_X, PAULI_X),
                  np.kron(PAULI_X, PAULI_Y), np.kron(PAULI_X, PAULI_Z), np.kron(PAULI_Y, IDENTITY),

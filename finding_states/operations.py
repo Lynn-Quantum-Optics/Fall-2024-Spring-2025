@@ -116,6 +116,8 @@ def minimize_witnesses(witness_class, angles, rho=None, counts=None):
     def loss(W, theta):
         """
         Loss function for minimization: tr(W @ rho)
+
+        NOTE: this is the expectation value of W
         """
         witness = witness_matrix_tf(W(theta))
         return tf.linalg.trace(tf.matmul(witness, rho_tf))
