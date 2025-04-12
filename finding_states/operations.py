@@ -1,6 +1,7 @@
 import numpy as np
 import finding_states.states_and_witnesses as states
 import tensorflow as tf
+from inspect import signature
 
 ## NOTE: Be sure to import states_and_witnesses before this file
 ##       when working in a REPL (e.g. ipython) or notebook
@@ -86,14 +87,13 @@ def rotate_m(m, n):
 
 # TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
 #       FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
-def minimize_witnesses(witness_class, angles, rho=None, counts=None):
+def minimize_witnesses(witness_class, rho=None, counts=None):
     """
     Calculates the minimum expectation values for each the witnesses specified
     in a given witness class for a given density matrix
 
     Params:
         witness_class - a class of witnesses (possible values: W3, W5, W7, W8)
-        angles        - the angles used for rotations
         rho           - the density matrix
         TODO: The W7 and W8 witnesses have not been implemented yet
 
@@ -102,9 +102,12 @@ def minimize_witnesses(witness_class, angles, rho=None, counts=None):
         min_vals   - a list of the minimum expectation values
         NOTE: These are listed in the order of the witnesses (e.g. W3_1 first and W5_9 last)
     """
-    min_thetas = []
+    # Lists to keep track of minimum expectation values and their corresponding parameters
+    min_params = []
     min_vals = []
-    ws = witness_class(angles, rho=rho, counts=counts).get_witnesses()
+
+    # Get necessary witnesses
+    ws = witness_class(rho=rho, counts=counts).get_witnesses()
 
     # Convert witness matrix function to TensorFlow
     def witness_matrix_tf(w):
@@ -113,37 +116,52 @@ def minimize_witnesses(witness_class, angles, rho=None, counts=None):
     # Convert density matrix to TensorFlow
     rho_tf = tf.convert_to_tensor(rho, dtype=tf.complex64)
 
-    def loss(W, theta):
+    def loss(W, params):
         """
         Loss function for minimization: tr(W @ rho)
 
         NOTE: this is the expectation value of W
         """
-        witness = witness_matrix_tf(W(theta))
+        witness = witness_matrix_tf(W(*params))
         return tf.linalg.trace(tf.matmul(witness, rho_tf))
     
     # Optimize using gradient descent
     optimizer = tf.optimizers.SGD(learning_rate=0.1) # stochastic gradient descent
 
-    # initial guess
-    theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+    def optimize(W, params):
+        """
+        Generic minimization loop that works for any number of minimization parameters
+        """
+        for _ in range(100):  # Run optimization with 100 iterations
+            with tf.GradientTape() as tape:
+                loss_value = loss(W, params)
 
-    for i, W in enumerate(ws):
-            theta.assign(np.random.uniform(0, np.pi)) # initial guess
+            grads = tape.gradient(loss_value, params)
+            for g, p in zip(grads, params):
+                if g is not None: # Check if gradient exists (avoid NoneType errors)
+                    optimizer.apply_gradients([(g, p)])
+                    p.assign(tf.clip_by_value(p, 0.0, np.pi))  # enforce bounds
 
-            for _ in range(100):  # Run optimization with 100 iterations
-                with tf.GradientTape() as tape:
-                    loss_value = loss(W, theta)
-                grad = tape.gradient(loss_value, theta)
+        return [p.numpy() for p in param_vars], loss_value.numpy().real
 
-                if grad is not None:  # Check if gradient exists (avoid NoneType errors)
-                    optimizer.apply_gradients([(grad, theta)])
-                    theta.assign(tf.clip_by_value(theta, 0.0, np.pi))  # Enforce bounds
 
-            min_thetas.append(theta.numpy())
-            min_vals.append(np.trace(W(theta) @ rho))
+    for W in ws:
+        # initial guesses
+        theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+        alpha = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+        beta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
 
-    return (min_thetas, min_vals)
+        # grab correct number of parameters for the witness
+        num_params = len(signature(W).parameters)
+        param_vars = [theta, alpha, beta][:num_params]
+
+        # Optimize parameters and add to lists
+        min_params, min_val = optimize(W, param_vars)
+        min_params.append(min_params)
+        min_vals.append(min_val)
+
+
+    return (min_params, min_vals)
 
 if __name__ == "__main__":
     theta = np.pi/2
