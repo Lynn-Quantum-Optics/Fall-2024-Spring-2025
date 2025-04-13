@@ -9,6 +9,7 @@ from inspect import signature
 #########################################
 ## State & Density Matrix Operations
 #########################################
+
 def ket(state):
     """
     Return the given state (represented as an array) as a ket
@@ -196,4 +197,4 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
     return (min_params, min_vals)
 
 if __name__ == "__main__":
-    print("Operations loaded.")
+    print("Operations Loaded.")

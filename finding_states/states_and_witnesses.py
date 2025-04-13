@@ -145,16 +145,13 @@ class W3:
     Attributes: 
     rho (optional)    - the density matrix for the entangled photon state
     counts (optional) - np array of photon counts and uncertainties from experimental data
-    expt              - whether or not to calculate the experimental density matrix using counts
 
     NOTE: One of rho or counts must be given
     NOTE: If counts is given, experimental calculations will be used
     NOTE: If rho is given, theoretical calculations will be used
-    NOTE: expt is True by default
     """
-    def __init__(self, rho = None, counts=None, expt=True):
+    def __init__(self, rho = None, counts=None):
         self.counts = counts
-        self.expt = expt
             
         # counts not given, so we want to use the given theoretical rho
         if not counts:
@@ -162,8 +159,8 @@ class W3:
             self.rho = rho
 
         else:
-            # counts given, but we just want witness expectation values, so
-            # rho is not desired in order to minimize the number of measurements
+            # counts given, so we will construct an experimental density matrix, so
+            # rho should not be given as it's for theoretical states
             assert rho is None, "ERROR: counts was given, so rho should not be given"
 
             # store individual counts in variables
@@ -188,10 +185,9 @@ class W3:
 
             self.stokes = self.calculate_stokes()
 
-            # counts given, and we want to calculate the experimental rho 
-            # NOTE: this requires using a full tomography
-            if expt:
-                self.rho = self.expt_rho()
+            # calculate experimental density matrix
+            # NOTE: doesn't necessarily represent a full state
+            self.rho = self.expt_rho()
 
     def W1(self, theta):
         """
@@ -203,12 +199,9 @@ class W3:
         a = np.cos(theta)
         b = np.sin(theta)
 
-        # expectation value (for when we don't want to use full tomography)
-        if self.counts and not self.expt:
-            return 0.25*(self.stokes[0] + self.stokes[15] + 
-                        (a**2 - b**2)*self.stokes[5] + 
-                        (a**2 - b**2)*self.stokes[10] + 
-                        2*a*b*(self.stokes[12] + self.stokes[3]))
+        # For experimental data, ensure we have the necessary counts
+        if self.counts:
+            W3.check_counts(self)
         
         # W1 as a matrix (for when we use full tomography & thus have a rho)
         phi1 = a*PHI_P + b*PHI_M
@@ -218,11 +211,8 @@ class W3:
         a = np.cos(theta)
         b = np.sin(theta)
 
-        if self.counts and not self.expt:
-            return 0.25*(self.stokes[0] - self.stokes[15] + 
-                        (a**2 - b**2)*self.stokes[5] - 
-                        (a**2 - b**2)*self.stokes[10] + 
-                        2*a*b*(self.stokes[12] - self.stokes[3]))
+        if self.counts:
+            W3.check_counts(self)
         
         phi2 = a*PSI_P + b*PSI_M
         return op.partial_transpose(phi2 * op.adjoint(phi2))
@@ -231,11 +221,8 @@ class W3:
         a = np.cos(theta)
         b = np.sin(theta)
 
-        if self.counts and not self.expt:
-            return 0.25*(self.stokes[0] + self.stokes[5] + 
-                         (a**2 - b**2)*self.stokes[15] + 
-                         (a**2 - b**2)*self.stokes[10] + 
-                         2*a*b*(self.stokes[4] + self.stokes[1]))
+        if self.counts:
+            W3.check_counts(self)
         
         phi3 = a*PHI_P + b*PSI_P
         return op.partial_transpose(phi3 * op.adjoint(phi3))
@@ -244,11 +231,8 @@ class W3:
         a = np.cos(theta)
         b = np.sin(theta)
 
-        if self.counts and not self.expt:
-            return 0.25*(self.stokes[0] - self.stokes[5] + 
-                         (a**2 - b**2)*self.stokes[15] - 
-                         (a**2 - b**2)*self.stokes[10] - 
-                         2*a*b*(self.stokes[4] - self.stokes[1]))
+        if self.counts:
+            W3.check_counts(self)
 
         phi4 = a*PHI_M + b*PSI_M
         return op.partial_transpose(phi4 * op.adjoint(phi4))
@@ -257,11 +241,8 @@ class W3:
         a = np.cos(theta)
         b = np.sin(theta)
 
-        if self.counts and not self.expt:
-            return 0.25*(self.stokes[0] + self.stokes[10] + 
-                         (a**2 - b**2)*self.stokes[15] + 
-                         (a**2 - b**2)*self.stokes[5] - 
-                         2*a*b*(self.stokes[8] + self.stokes[2]))
+        if self.counts:
+            W3.check_counts(self)
 
         phi5 = a*PHI_P + 1j*b*PSI_M
         return op.partial_transpose(phi5 * op.adjoint(phi5))
@@ -270,17 +251,20 @@ class W3:
         a = np.cos(theta)
         b = np.sin(theta)
 
-        if self.counts and not self.expt:
-            return 0.25*(self.stokes[0] - self.stokes[10] + 
-                         (a**2 - b**2)*self.stokes[15] - 
-                         (a**2 - b**2)*self.stokes[5] + 
-                         2*a*b*(self.stokes[8] - self.stokes[2]))
+        if self.counts:
+            W3.check_counts(self)
 
         phi6 = a*PHI_M + 1j*b*PSI_P
         return op.partial_transpose(phi6 * op.adjoint(phi6))
         
     def expt_rho(self):
-        """Calculates the theoretical density matrix"""
+        """
+        Calculates the experimental density matrix
+        
+        NOTE: this only represents an actual state if all counts were given
+              otherwise, the resulting matrix only contains partial information
+              of the state
+        """
         
         # Get tensor'd Pauli matrices
         pauli = [np.kron(IDENTITY, IDENTITY), np.kron(IDENTITY, PAULI_X), np.kron(IDENTITY, PAULI_Y),
@@ -306,56 +290,75 @@ class W3:
         """
         assert self.counts is not None, "ERROR: counts not given"
 
-        stokes = [1,
+        stokes = [1,                                                                         # 0
             (self.dd - self.da + self.ad - self.aa)/(self.dd + self.da + self.ad + self.aa),
             (self.rr + self.lr - self.rl - self.ll)/(self.rr + self.lr + self.rl + self.ll),
             (self.hh - self.hv - self.vh - self.vv)/(self.hh + self.hv + self.vh + self.vv),
             (self.dd + self.da - self.ad - self.aa)/(self.dd + self.da + self.ad + self.da),
-            (self.dd - self.da - self.ad + self.aa)/(self.dd + self.da + self.ad + self.aa),
+            (self.dd - self.da - self.ad + self.aa)/(self.dd + self.da + self.ad + self.aa), # 5
             (self.dr - self.dl - self.ar + self.al)/(self.dr + self.dl + self.ar + self.al),
             (self.dh - self.dv - self.ah + self.av)/(self.dh + self.dv + self.ah + self.av),
             (self.rr - self.lr + self.rl - self.ll)/(self.rr + self.lr + self.rl + self.ll),
             (self.rd - self.ra - self.ld + self.la)/(self.rd + self.ra + self.ld + self.la),
-            (self.rr - self.rl - self.lr + self.ll)/(self.rr + self.rl + self.lr + self.ll),
+            (self.rr - self.rl - self.lr + self.ll)/(self.rr + self.rl + self.lr + self.ll), # 10
             (self.rh - self.rv - self.lh + self.lv)/(self.rh + self.rv + self.lh + self.lv),
             (self.hh + self.hv - self.vh - self.vv)/(self.hh + self.hv + self.vh + self.vv),
             (self.hd - self.ha - self.vd + self.va)/(self.hd + self.ha + self.vd + self.va),
             (self.hr - self.hl - self.vr + self.vl)/(self.hr + self.hl + self.vr + self.vl),
-            (self.hh - self.hv - self.vh + self.vv)/(self.hh + self.hv + self.vh + self.vv)
+            (self.hh - self.hv - self.vh + self.vv)/(self.hh + self.hv + self.vh + self.vv)  # 15
         ]
         
         return stokes
+    
+    def check_counts(self):
+        """
+        Checks to see that the necessary counts have been 
+        given when calculating a witness with experimental data
+        """
+        # zz measurements
+        assert self.hh != 0, "Missing HH measurement"
+        assert self.hv != 0, "Missing HV measurement"
+        assert self.vh != 0, "Missing VH measurement"
+        assert self.vv != 0, "Missing VV measurement"
 
-    def get_witnesses(self, ops=True, theta=None):
+        # xx measurements
+        assert self.dd != 0, "Missing DD measurement"
+        assert self.da != 0, "Missing DA measurement"
+        assert self.ad != 0, "Missing AD measurement"
+        assert self.aa != 0, "Missing AA measurement"
+
+        # yy measurements
+        assert self.rr != 0, "Missing RR measurement"
+        assert self.rl != 0, "Missing RL measurement"
+        assert self.lr != 0, "Missing LR measurement"
+        assert self.ll != 0, "Missing LL measurement"
+
+    def get_witnesses(self, vals=False, theta=None):
         """
         Returns the expectation values of all 6 witnesses with a given theta
         or the operators themselves
 
         Params:
-        ops (optional)   - if true, return the witness operators as functions, return expectation values otherwise
-        theta (optional) - the theta value to calculate expectation values for when ops is false
+        vals (optional)  - if true, return the witness expectation values, otherwise return 
+                           the operators as functions
+        theta (optional) - the theta value to calculate expectation values for when vals is True
         
-        NOTE: ops is true by default
-        NOTE: theta is not given by default
-        NOTE: ops takes precedence over theta, so if ops is true, only the witness operators will be
-              returned (and no expectation values for the given theta, even if theta is given)
+        NOTE: vals is False by default
+        NOTE: theta is not given by default, and must be given when vals is True
+        NOTE: operators will always be returned if vals is False even if theta is given
         """
         ws = [self.W1, self.W2, self.W3, self.W4, self.W5, self.W6]
     
-        ## Return the operators if specified
-        if ops:
+        ## By default, return the operators
+        if not vals:
             return ws
 
         ## Otherwise, return the expectation values with the given theta
+        assert theta is not None, "ERROR: theta not given"
         ws = [w(theta) for w in ws]
         vals = []
-
-        # When we don't have a density matrix
-        if self.counts and not self.expt:
-            return [w(theta) for w in ws]
         
-        # When we do have a density matrix
-        for i, w in enumerate(ws):
+        for w in ws:
             vals += [np.trace(w @ self.rho).real]
         return vals
 
@@ -363,7 +366,6 @@ class W3:
         return (
             f'Rho: {self.rho}\n'
             f'Counts: {self.counts}\n'
-            f'Expt: {self.expt}'
         )
 
 class W5(W3):
@@ -373,75 +375,171 @@ class W5(W3):
     Attributes:
     rho (optional)    - the density matrix for the entangled photon state
     counts (optional) - np array of photon counts and uncertainties from experimental data
-    expt (optional)   - whether or not to calculate the experimental density matrix using counts
         
     NOTE: this class inherits from W3, so all methods in that class can be used here, and all notes apply
     """
-    def __init__(self, rho=None, counts=None, expt=True):
-        super().__init__(rho=rho, counts=counts, expt=expt)
+    def __init__(self, rho=None, counts=None):
+        super().__init__(rho=rho, counts=counts)
 
     def Wp1(self, theta, alpha):
         w1 = super().W1(theta)
+        
+        if self.counts:
+            W5.check_counts(self, triplet=1)
+
         rotation = np.kron(R_z(alpha), IDENTITY)
         return op.rotate_m(w1, rotation)
     
     def Wp2(self, theta, alpha):
         w2 = super().W2(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=1)
+
         rotation = np.kron(R_z(alpha), IDENTITY)
         return op.rotate_m(w2, rotation)
     
     def Wp3(self, theta, alpha, beta):
         w3 = super().W3(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=1)
+
         rotation = np.kron(R_z(alpha), R_z(beta))
         return op.rotate_m(w3, rotation)
     
     def Wp4(self, theta, alpha):
         w3 = super().W3(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=2)
+
         rotation = np.kron(R_x(alpha), IDENTITY)
         return op.rotate_m(w3, rotation)
     
     def Wp5(self, theta, alpha):
         w4 = super().W4(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=2)
+
         rotation = np.kron(R_x(alpha), IDENTITY)
         return op.rotate_m(w4, rotation)
     
     def Wp6(self, theta, alpha, beta):
         w1 = super().W1(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=2)
+
         rotation = np.kron(R_x(alpha), R_y(beta))
         return op.rotate_m(w1, rotation)
     
     def Wp7(self, theta, alpha):
         w5 = super().W5(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=3)
+
         rotation = np.kron(R_y(alpha), IDENTITY)
         return op.rotate_m(w5, rotation)
     
     def Wp8(self, theta, alpha):
         w6 = super().W6(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=3)
+
         rotation = np.kron(R_y(alpha), IDENTITY)
         return op.rotate_m(w6, rotation)
 
     def Wp9(self, theta, alpha, beta):
         w1 = super().W1(theta)
+
+        if self.counts:
+            W5.check_counts(self, triplet=3)
+
         rotation = np.kron(R_y(alpha), R_y(beta))
         return op.rotate_m(w1, rotation)
     
-    def get_witnesses(self, ops=True, theta=None):
+    def check_counts(self, triplet):
+        """
+        Checks to see that the necessary counts have been 
+        given when calculating a witness with experimental data
+
+        Params:
+        triplet - which triplet the witness belongs to
+        """
+        super().check_counts()
+
+        if triplet == 1:
+            # xy measurements
+            assert self.dr != 0, "Missing DR measurement"
+            assert self.dl != 0, "Missing DL measurement"
+            assert self.ar != 0, "Missing AR measurement"
+            assert self.al != 0, "Missing AL measurement"
+
+            # yx measurements
+            assert self.rd != 0, "Missing RD measurement"
+            assert self.ra != 0, "Missing RA measurement"
+            assert self.ld != 0, "Missing LD measurement"
+            assert self.la != 0, "Missing LA measurement"
+
+        elif triplet == 2:
+            # xz measurements
+            assert self.dh != 0, "Missing DH measurement"
+            assert self.dv != 0, "Missing DV measurement"
+            assert self.ah != 0, "Missing AH measurement"
+            assert self.av != 0, "Missing AV measurement"
+
+            # zx measurements
+            assert self.hd != 0, "Missing HD measurement"
+            assert self.ha != 0, "Missing HA measurement"
+            assert self.vd != 0, "Missing VD measurement"
+            assert self.va != 0, "Missing VA measurement"
+
+        elif triplet == 3:
+            # zy measurements
+            assert self.hr != 0, "Missing HR measurement"
+            assert self.hl != 0, "Missing HL measurement"
+            assert self.vr != 0, "Missing VR measurement"
+            assert self.vl != 0, "Missing VL measurement"
+
+            # yz measurements
+            assert self.rh != 0, "Missing RH measurement"
+            assert self.rv != 0, "Missing RV measurement"
+            assert self.lh != 0, "Missing LH measurement"
+            assert self.lv != 0, "Missing LV measurement"
+
+        else:
+            assert False, "Invalid triplet specified"
+    
+    def get_witnesses(self, vals=False, theta=None, alpha=None, beta=None):
         w5s = [self.Wp1, self.Wp2, self.Wp3, 
                 self.Wp4, self.Wp5, self.Wp6,
                 self.Wp7, self.Wp8, self.Wp9]
+        
         # Return operators
-        if ops:
+        if not vals:
             ws = super().get_witnesses()
             ws += w5s
             return ws
         
         ## Return expectation values
-        vals = super().get_witnesses(ops, theta)
-        w5s = [w(theta) for w in w5s]
-        if self.counts and not self.expt:
-            return vals + w5s
+        assert theta is not None, "ERROR: theta not given"
+        assert alpha is not None, "ERROR: alpha not given"
+        assert beta is not None, "ERROR: beta not given"
 
-        for i, w in enumerate(w5s):
+        vals = super().get_witnesses(vals, theta)
+
+        # Get the W5s with the given theta, alpha, and beta
+        for i, W in enumerate(w5s):
+            if i == 2 or i == 5 or i == 8:
+                w5s[i] = W(theta, alpha, beta)
+            else:
+                w5s[i] = W(theta, alpha)
+        
+        for w in w5s:
             vals += [np.trace(w @ self.rho).real]
         return vals
 
