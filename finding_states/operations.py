@@ -87,14 +87,17 @@ def rotate_m(m, n):
 
 # TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
 #       FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
-def minimize_witnesses(witness_class, rho=None, counts=None):
+def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
     """
     Calculates the minimum expectation values for each the witnesses specified
-    in a given witness class for a given density matrix
+    in a given witness class for a given theoretical density matrix or for given
+    experimental data
 
     Params:
         witness_class - a class of witnesses (possible values: W3, W5, W7, W8)
         rho           - the density matrix
+        counts        - experimental data 
+        num_guesses   - the number of initial guesses to use in minimization
         TODO: The W7 and W8 witnesses have not been implemented yet
 
     Returns: (min_thetas, min_vals)
@@ -125,16 +128,36 @@ def minimize_witnesses(witness_class, rho=None, counts=None):
         witness = witness_matrix_tf(W(*params))
         return tf.linalg.trace(tf.matmul(witness, rho_tf))
     
-    # Optimize using gradient descent
-    optimizer = tf.optimizers.SGD(learning_rate=0.1) # stochastic gradient descent
+    # minimize using the Adam optimizer
+    optimizer = tf.optimizers.Adam(learning_rate=0.05)
 
-    def optimize(W, params):
+    def optimize(W, params, threshold=1e-10, max_iters=1000):
         """
         Generic minimization loop that works for any number of minimization parameters
+
+        Parameters:
+        W                    - the witness whose expectation value will be minimized
+        params               - the witness parameters to be minimized (i.e. theta, alpha, beta)
+        threshold (optional) - smallest allowed change in the loss function (i.e. expectation value)
+        max_iters (optional) - maximum number of iterations allowed in the optimization loop
+
+        NOTE: threshold is 1e-6 by default
+        NOTE: max_iters is 1000 by default
         """
-        for _ in range(100):  # Run optimization with 100 iterations
+        prev_loss = float("inf")
+
+        # Optimization loop, stops when minimized value starts converging or when
+        # the maximum iterations 
+        for _ in range(max_iters):
             with tf.GradientTape() as tape:
                 loss_value = loss(W, params)
+
+            loss_real = tf.math.real(loss_value).numpy()
+        
+            # Check if minimized value has converged within the threshold
+            if abs(prev_loss - loss_real) < threshold:
+                break
+            prev_loss = loss_real
 
             grads = tape.gradient(loss_value, params)
             for g, p in zip(grads, params):
@@ -142,21 +165,30 @@ def minimize_witnesses(witness_class, rho=None, counts=None):
                     optimizer.apply_gradients([(g, p)])
                     p.assign(tf.clip_by_value(p, 0.0, np.pi))  # enforce bounds
 
-        return [p.numpy() for p in param_vars], loss_value.numpy().real
+        return [p.numpy() for p in param_vars], loss_real
 
 
+    # Minimize each witness
     for W in ws:
-        # initial guesses
-        theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
-        alpha = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
-        beta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
-
-        # grab correct number of parameters for the witness
+        # determine number of parameters to be minimzed
         num_params = len(signature(W).parameters)
-        param_vars = [theta, alpha, beta][:num_params]
+        
+        # Try 10 different initial guesses at random and use the best result
+        min_val = float("inf")
+        for _ in range(num_guesses):
+            # initial guesses
+            theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+            alpha = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+            beta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
 
-        # Optimize parameters and add to lists
-        min_params, min_val = optimize(W, param_vars)
+            # use the right number of parameters
+            param_vars = [theta, alpha, beta][:num_params]
+            this_min_params, this_min_val = optimize(W, param_vars)
+
+            if this_min_val < min_val:
+                min_params = this_min_params
+                min_val = this_min_val
+
         min_params.append(min_params)
         min_vals.append(min_val)
 
@@ -164,36 +196,4 @@ def minimize_witnesses(witness_class, rho=None, counts=None):
     return (min_params, min_vals)
 
 if __name__ == "__main__":
-    theta = np.pi/2
-
-    print("===== PAULI_X about z =====")
-    print("Actual: \n", rotate_z(states.PAULI_X, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*states.PAULI_X + np.sin(theta)*states.PAULI_Y, "\n")
-
-    print("===== PAULI_Y about z =====")
-    print("Actual: \n", rotate_z(states.PAULI_Y, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*states.PAULI_Y - np.sin(theta)*states.PAULI_X, "\n")
-
-    print("===== PAULI_X about y =====")
-    print("Actual: \n", rotate_y(states.PAULI_X, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*states.PAULI_X - np.sin(theta)*states.PAULI_Z, "\n")
-
-    print("===== PAULI_Z about y =====")
-    print("Actual: \n", rotate_y(states.PAULI_Z, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*states.PAULI_Z + np.sin(theta)*states.PAULI_X, "\n")
-
-    print("===== PAULI_Y about x =====")
-    print("Actual: \n", rotate_x(states.PAULI_Y, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*states.PAULI_Y - np.sin(theta)*states.PAULI_Z, "\n")
-
-    print("===== PAULI_Z about x =====")
-    print("Actual: \n", rotate_x(states.PAULI_Z, theta), "\n")
-    print("Predicted: \n", np.cos(theta)*states.PAULI_Z + np.sin(theta)*states.PAULI_Y, "\n")
-
-    ### Predicted - Actual (expected: all 0s for all ###
-    # print((np.cos(theta)*PAULI_X + np.sin(theta)*PAULI_Y) - rotate_z(PAULI_X, theta))
-    # print((np.cos(theta)*PAULI_Y - np.sin(theta)*PAULI_X) - rotate_z(PAULI_Y, theta))
-    # print((np.cos(theta)*PAULI_X - np.sin(theta)*PAULI_Z) - rotate_y(PAULI_X, theta))  
-    # print((np.cos(theta)*PAULI_Z + np.sin(theta)*PAULI_X) - rotate_y(PAULI_Z, theta))
-    # print((np.cos(theta)*PAULI_Y - np.sin(theta)*PAULI_Z) - rotate_x(PAULI_Y, theta))
-    # print((np.cos(theta)*PAULI_Z + np.sin(theta)*PAULI_Y) - rotate_x(PAULI_Z, theta))
+    print("Operations loaded.")
