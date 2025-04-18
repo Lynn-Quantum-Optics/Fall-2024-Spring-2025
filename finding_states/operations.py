@@ -142,7 +142,7 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         threshold (optional) - smallest allowed change in the loss function (i.e. expectation value)
         max_iters (optional) - maximum number of iterations allowed in the optimization loop
 
-        NOTE: threshold is 1e-6 by default
+        NOTE: threshold is 1e-10 by default
         NOTE: max_iters is 1000 by default
         """
         prev_loss = float("inf")
@@ -160,6 +160,7 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
                 break
             prev_loss = loss_real
 
+            # TODO: add fudging to get out of local minima
             grads = tape.gradient(loss_value, params)
             for g, p in zip(grads, params):
                 if g is not None: # Check if gradient exists (avoid NoneType errors)
@@ -170,31 +171,51 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
 
 
     # Minimize each witness
+    # TODO: look into MULTITHREADING or multipooling
     for W in ws:
         # determine number of parameters to be minimzed
         num_params = len(signature(W).parameters)
         
-        # Try 10 different initial guesses at random and use the best result
+        # initialize bounds for the parameters to be minimized
+        lower_bound = tf.constant(0.0, dtype=tf.float64)
+
+        if num_params == 1:
+            theta_bound = tf.constant(np.pi, dtype=tf.float64)
+        elif num_params == 2:
+            theta_bound = tf.constant(np.pi, dtype=tf.float64)
+            alpha_bound = tf.constant(np.pi, dtype=tf.float64) 
+        elif num_params == 3:
+            theta_bound = tf.constant(np.pi/2, dtype=tf.float64)
+            alpha_bound = tf.constant(2*np.pi, dtype=tf.float64) 
+            beta_bound = tf.constant(2*np.pi, dtype=tf.float64)
+        
+        
+        # Try different random initial guesses and use the best result
+        # TODO: add guesses at bounds
         min_val = float("inf")
         for _ in range(num_guesses):
             # initial guesses
-            theta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
-            alpha = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
-            beta = tf.Variable(np.random.uniform(0, np.pi), dtype=tf.float64)
+            theta = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
+                                                  maxval=theta_bound, dtype=tf.float64))
+            alpha = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
+                                                  maxval=alpha_bound, dtype=tf.float64))
+            beta = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
+                                                  maxval=beta_bound, dtype=tf.float64))
 
             # use the right number of parameters
             param_vars = [theta, alpha, beta][:num_params]
             this_min_params, this_min_val = optimize(W, param_vars)
 
             if this_min_val < min_val:
-                min_params = this_min_params
+                min_param = this_min_params
                 min_val = this_min_val
 
-        min_params.append(min_params)
+        min_params.append(min_param)
         min_vals.append(min_val)
 
 
     return (min_params, min_vals)
+
 
 if __name__ == "__main__":
     print("Operations Loaded.")
