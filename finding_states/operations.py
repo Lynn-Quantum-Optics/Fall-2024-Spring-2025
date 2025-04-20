@@ -106,6 +106,9 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         min_vals   - a list of the minimum expectation values
         NOTE: These are listed in the order of the witnesses (e.g. W3_1 first and W5_9 last)
     """
+    # Ensure num_guesses is at least 2 to allow for guesses at the bounds
+    assert num_guesses >= 2, "ERROR: Number of guesses must be at least 2"
+    
     # Lists to keep track of minimum expectation values and their corresponding parameters
     min_params = []
     min_vals = []
@@ -130,7 +133,13 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         return tf.linalg.trace(tf.matmul(witness, rho_tf))
     
     # minimize using the Adam optimizer
-    optimizer = tf.optimizers.Adam(learning_rate=0.05)
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=0.05,
+        decay_steps=100,
+        decay_rate=0.9,
+        staircase=True
+    )
+    optimizer = tf.optimizers.Adam(learning_rate=lr_schedule)
 
     def optimize(W, params, threshold=1e-10, max_iters=1000):
         """
@@ -178,6 +187,8 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         
         # initialize bounds for the parameters to be minimized
         lower_bound = tf.constant(0.0, dtype=tf.float64)
+        alpha_bound = lower_bound # initialize these upper bounds to
+        beta_bound = lower_bound  #    prevent error in minimization loop
 
         if num_params == 1:
             theta_bound = tf.constant(np.pi, dtype=tf.float64)
@@ -191,26 +202,44 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         
         
         # Try different random initial guesses and use the best result
-        # TODO: add guesses at bounds
         min_val = float("inf")
         for _ in range(num_guesses):
-            # initial guesses
             theta = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
-                                                  maxval=theta_bound, dtype=tf.float64))
+                                                maxval=theta_bound, dtype=tf.float64))
             alpha = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
-                                                  maxval=alpha_bound, dtype=tf.float64))
+                                                maxval=alpha_bound, dtype=tf.float64))
             beta = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
-                                                  maxval=beta_bound, dtype=tf.float64))
+                                                maxval=beta_bound, dtype=tf.float64))
 
             # use the right number of parameters
             param_vars = [theta, alpha, beta][:num_params]
             this_min_params, this_min_val = optimize(W, param_vars)
 
             if this_min_val < min_val:
-                min_param = this_min_params
+                best_param = this_min_params
                 min_val = this_min_val
 
-        min_params.append(min_param)
+        # do a guess at lower_bound
+        theta = tf.Variable(lower_bound, dtype=tf.float64)
+        alpha = tf.Variable(lower_bound, dtype=tf.float64)
+        beta = tf.Variable(lower_bound, dtype=tf.float64)
+        param_vars = [theta, alpha, beta][:num_params]
+        this_min_params, this_min_val = optimize(W, param_vars)
+        if this_min_val < min_val:
+                best_param = this_min_params
+                min_val = this_min_val
+
+        # do a guess at upper_bound
+        theta = tf.Variable(theta_bound, dtype=tf.float64)
+        alpha = tf.Variable(alpha_bound, dtype=tf.float64)
+        beta = tf.Variable(beta_bound, dtype=tf.float64)
+        param_vars = [theta, alpha, beta][:num_params]
+        this_min_params, this_min_val = optimize(W, param_vars)
+        if this_min_val < min_val:
+                best_param = this_min_params
+                min_val = this_min_val
+
+        min_params.append(best_param)
         min_vals.append(min_val)
 
 
