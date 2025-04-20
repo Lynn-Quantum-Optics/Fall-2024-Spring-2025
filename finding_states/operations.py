@@ -98,7 +98,8 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         witness_class - a class of witnesses (possible values: W3, W5, W7, W8)
         rho           - the density matrix
         counts        - experimental data 
-        num_guesses   - the number of initial guesses to use in minimization
+        num_guesses   - the number of random initial guesses to use in minimization
+        NOTE: There are an additional 2 guesses at the bounds on top of the random guesses
         TODO: The W7 and W8 witnesses have not been implemented yet
 
     Returns: (min_thetas, min_vals)
@@ -133,11 +134,12 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         return tf.linalg.trace(tf.matmul(witness, rho_tf))
     
     # minimize using the Adam optimizer
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    lr_schedule = tf.keras.optimizers.schedules.CosineDecayRestarts(
         initial_learning_rate=0.05,
-        decay_steps=100,
-        decay_rate=0.9,
-        staircase=True
+        first_decay_steps=250,
+        t_mul=2.0,               # each restart lasts twice as long
+        m_mul=1.0,               # learning rate stays the same after each restart
+        alpha=0.001              # minimum LR
     )
     optimizer = tf.optimizers.Adam(learning_rate=lr_schedule)
 
