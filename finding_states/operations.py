@@ -100,7 +100,7 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         counts        - experimental data 
         num_guesses   - the number of random initial guesses to use in minimization
         NOTE: There are an additional 2 guesses at the bounds on top of the random guesses
-        TODO: The W7 and W8 witnesses have not been implemented yet
+        TODO: The W7 witnesses have not been implemented yet
 
     Returns: (min_thetas, min_vals)
         min_thetas - a list of the thetas corresponding to the minimum expectation values
@@ -191,6 +191,7 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         lower_bound = tf.constant(0.0, dtype=tf.float64)
         alpha_bound = lower_bound # initialize these upper bounds to
         beta_bound = lower_bound  #    prevent error in minimization loop
+        gamma_bound = lower_bound
 
         if num_params == 1:
             theta_bound = tf.constant(np.pi, dtype=tf.float64)
@@ -201,6 +202,11 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
             theta_bound = tf.constant(np.pi/2, dtype=tf.float64)
             alpha_bound = tf.constant(2*np.pi, dtype=tf.float64) 
             beta_bound = tf.constant(2*np.pi, dtype=tf.float64)
+        else:
+            theta_bound = tf.constant(np.pi/2, dtype=tf.float64)
+            alpha_bound = tf.constant(2*np.pi, dtype=tf.float64) 
+            beta_bound = tf.constant(2*np.pi, dtype=tf.float64)
+            gamma_bound = tf.constant(2*np.pi, dtype=tf.float64)
         
         
         # Try different random initial guesses and use the best result
@@ -212,9 +218,11 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
                                                 maxval=alpha_bound, dtype=tf.float64))
             beta = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
                                                 maxval=beta_bound, dtype=tf.float64))
+            gamma = tf.Variable(tf.random.uniform(shape=[], minval=lower_bound, 
+                                                maxval=gamma_bound, dtype=tf.float64))
 
             # use the right number of parameters
-            param_vars = [theta, alpha, beta][:num_params]
+            param_vars = [theta, alpha, beta, gamma][:num_params]
             this_min_params, this_min_val = optimize(W, param_vars)
 
             if this_min_val < min_val:
@@ -225,7 +233,8 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         theta = tf.Variable(lower_bound, dtype=tf.float64)
         alpha = tf.Variable(lower_bound, dtype=tf.float64)
         beta = tf.Variable(lower_bound, dtype=tf.float64)
-        param_vars = [theta, alpha, beta][:num_params]
+        gamma = tf.Variable(lower_bound, dtype=tf.float64)
+        param_vars = [theta, alpha, beta, gamma][:num_params]
         this_min_params, this_min_val = optimize(W, param_vars)
         if this_min_val < min_val:
                 best_param = this_min_params
@@ -235,7 +244,8 @@ def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
         theta = tf.Variable(theta_bound, dtype=tf.float64)
         alpha = tf.Variable(alpha_bound, dtype=tf.float64)
         beta = tf.Variable(beta_bound, dtype=tf.float64)
-        param_vars = [theta, alpha, beta][:num_params]
+        gamma = tf.Variable(gamma_bound, dtype=tf.float64)
+        param_vars = [theta, alpha, beta, gamma][:num_params]
         this_min_params, this_min_val = optimize(W, param_vars)
         if this_min_val < min_val:
                 best_param = this_min_params
