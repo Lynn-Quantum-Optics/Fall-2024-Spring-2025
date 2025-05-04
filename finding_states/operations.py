@@ -88,34 +88,38 @@ def rotate_m(m, n):
 
 # TODO: REVIEW THIS BY LOOKING AT SUMMER 2024 PAPER DRAFT 
 #       FIGURES 4,5,6 (SOLID LINES) AND EQUATIONS 3,4,5
-def minimize_witnesses(witness_class, rho=None, counts=None, num_guesses=10):
+def minimize_witnesses(witness_classes, rho=None, counts=None, num_guesses=10):
     """
     Calculates the minimum expectation values for each the witnesses specified
     in a given witness class for a given theoretical density matrix or for given
     experimental data
 
     Params:
-        witness_class - a class of witnesses (possible values: W3, W5, W7, W8)
-        rho           - the density matrix
-        counts        - experimental data 
-        num_guesses   - the number of random initial guesses to use in minimization
+        witness_classes - a class or list of classes of witnesses
+        rho             - the density matrix
+        counts          - experimental data 
+        num_guesses     - the number of random initial guesses to use in minimization
+        NOTE: allowable witness classes are W3, W5, W7, W8, and NavarroWitness (which is all witnesses)
         NOTE: There are an additional 2 guesses at the bounds on top of the random guesses
         TODO: The W7 witnesses have not been implemented yet
 
     Returns: (min_thetas, min_vals)
         min_thetas - a list of the thetas corresponding to the minimum expectation values
         min_vals   - a list of the minimum expectation values
-        NOTE: These are listed in the order of the witnesses (e.g. W3_1 first and W5_9 last)
-    """
-    # Ensure num_guesses is at least 2 to allow for guesses at the bounds
-    assert num_guesses >= 2, "ERROR: Number of guesses must be at least 2"
-    
+        NOTE: These are listed in the order of the witnesses (e.g. W3_1 first and W3_6 last).
+              If multiple classes given, they are listed in the order the classes are listed
+    """    
     # Lists to keep track of minimum expectation values and their corresponding parameters
     min_params = []
     min_vals = []
 
     # Get necessary witnesses
-    ws = witness_class(rho=rho, counts=counts).get_witnesses()
+    if type(witness_classes) != list:
+        ws = witness_classes(rho=rho, counts=counts).get_witnesses()
+    else:
+        ws = []
+        for c in witness_classes:
+            ws += c(rho=rho, counts=counts).get_witnesses()
 
     # Convert witness matrix function to TensorFlow
     def witness_matrix_tf(w):

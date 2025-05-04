@@ -264,15 +264,15 @@ class W3:
 
     def get_witnesses(self, vals=False, theta=None):
         """
-        Returns the expectation values of all 6 witnesses with a given theta
-        or the operators themselves
+        Returns either all 6 W3 witnesses as operators or the expectation values 
+        of the W3 witnesses with a given theta
 
         Params:
         vals (optional)  - if true, return the witness expectation values, otherwise return 
                            the operators as functions
         theta (optional) - the theta value to calculate expectation values for when vals is True
         
-        NOTE: vals is False by default
+        NOTE: vals is False by default, so operators are returned by default
         NOTE: theta is not given by default, and must be given when vals is True
         NOTE: operators will always be returned if vals is False even if theta is given
         """
@@ -585,34 +585,43 @@ class W5(W3):
         rotation = np.kron(R_y(alpha), R_y(beta))
         return op.rotate_m(w1, rotation)
     
+
     def get_witnesses(self, vals=False, theta=None, alpha=None, beta=None):
+        """
+        Returns either all 9 W5 witnesses as operators (default) or the expectation values 
+        of the W5 witnesses with given parameters (if vals is set to True)
+
+        NOTE: theta, alpha, beta must be given when vals is True
+        NOTE: Works the same as the get_witnesses function from W3, see docstring from that
+              function for more details
+        """
         w5s = [self.W5_1, self.W5_2, self.W5_3, 
                 self.W5_4, self.W5_5, self.W5_6,
                 self.W5_7, self.W5_8, self.W5_9]
         
-        # Return operators
+        ## Return operators if vals is False
         if not vals:
-            ws = super().get_witnesses()
-            ws += w5s
-            return ws
+            return w5s
         
-        ## Return expectation values
+        # Otherwise, we calculate expectation values, so check to see that
+        # all parameters are given
         assert theta is not None, "ERROR: theta not given"
         assert alpha is not None, "ERROR: alpha not given"
         assert beta is not None, "ERROR: beta not given"
 
-        values = super().get_witnesses(vals, theta)
-
-        # Get the W5s with the given theta, alpha, and beta
+        # Get the W5 operators for the given parameters
         for i, W in enumerate(w5s):
             if i == 2 or i == 5 or i == 8:
                 w5s[i] = W(theta, alpha, beta)
             else:
                 w5s[i] = W(theta, alpha)
         
+        # Calculate the expectation values
+        values = []
         for w in w5s:
             values += [np.trace(w @ self.rho).real]
         return values
+    
     
     def check_counts(self, triplet):
         """
@@ -1044,6 +1053,14 @@ class W8(W5):
 
 
     def get_witnesses(self, vals=False, theta=None, alpha=None, beta=None, gamma=None):
+        """
+        Returns either all 36 W8 witnesses as operators or the expectation values 
+        of the W8 witnesses with given parameters
+
+        NOTE: theta, alpha, beta, gamma must be given when vals is True
+        NOTE: Works the same as the get_witnesses function from W3, see docstring from that
+              function for more details
+        """
         w8s = [self.W8_1, self.W8_2, self.W8_3, self.W8_4, self.W8_5, self.W8_6,
                self.W8_7, self.W8_8, self.W8_9, self.W8_10, self.W8_11, self.W8_12,
                self.W8_13, self.W8_14, self.W8_15, self.W8_16, self.W8_17, self.W8_18,
@@ -1051,21 +1068,17 @@ class W8(W5):
                self.W8_25, self.W8_26, self.W8_27, self.W8_28, self.W8_29, self.W8_30,
                self.W8_31, self.W8_32, self.W8_33, self.W8_34, self.W8_35, self.W8_36]
         
-        # Return operators
+        ## Return operators
         if not vals:
-            ws = super().get_witnesses()
-            ws += w8s
-            return ws
+            return w8s
         
-        ## Return expectation values
+        # Check to see that all parameters are given
         assert theta is not None, "ERROR: theta not given"
         assert alpha is not None, "ERROR: alpha not given"
         assert beta is not None, "ERROR: beta not given"
         assert gamma is not None, "ERROR: gamma not given"
 
-        values = super().get_witnesses(vals, theta, alpha, beta)
-
-        # Get the W8 values with the given parameters
+        # Get the W8 operators for the given parameters
         for i, W in enumerate(w8s):
             # every 3rd witness needs gamma (NOTE: i is zero-indexed)
             if i % 3 == 2:
@@ -1073,6 +1086,8 @@ class W8(W5):
             else:
                 w8s[i] = W(theta, alpha, beta)
         
+        # Calculate the expectation values
+        values = []
         for w in w8s:
             values += [np.trace(w @ self.rho).real]
         return values
@@ -1671,6 +1686,59 @@ class W7(W8):
 
     ## Triplets 15-16: rotate by x on particle 2 from 7th & 8th W8 triplets ##
     # NOTE: THIS IS THE SAME AS TRIPLETS 11-12, CHECK IN W PACO TO MAKE SURE THIS IS RIGHT
+
+
+    def get_witnesses(self, vals=False, theta=None, alpha=None, beta=None, gamma=None):
+        """
+        Returns either all 108 W7 witnesses as operators or the expectation values 
+        of the W7 witnesses with given parameters
+
+        NOTE: theta, alpha, beta, gamma must be given when vals is True
+        NOTE: Works the same as the get_witnesses function from W3, see docstring from that
+              function for more details
+        """
+        w7s = [self.W7_1, self.W7_2, self.W7_3, self.W7_4, self.W7_5, self.W7_6,
+               self.W7_7, self.W7_8, self.W7_9, self.W7_10, self.W7_11, self.W7_12,
+               self.W7_13, self.W7_14, self.W7_15, self.W7_16, self.W7_17, self.W7_18,
+               self.W7_19, self.W7_20, self.W7_21, self.W7_22, self.W7_23, self.W7_24,
+               self.W7_25, self.W7_26, self.W7_27, self.W7_28, self.W7_29, self.W7_30,
+               self.W7_31, self.W7_32, self.W7_33, self.W7_34, self.W7_35, self.W7_36,
+               self.W7_37, self.W7_38, self.W7_39, self.W7_40, self.W7_41, self.W7_42,
+               self.W7_43, self.W7_44, self.W7_45, self.W7_46, self.W7_47, self.W7_48,
+               self.W7_49, self.W7_50, self.W7_51, self.W7_52, self.W7_53, self.W7_54,
+               self.W7_55, self.W7_56, self.W7_57, self.W7_58, self.W7_59, self.W7_60,
+               self.W7_61, self.W7_62, self.W7_63, self.W7_64, self.W7_65, self.W7_66,
+               self.W7_67, self.W7_68, self.W7_69, self.W7_70, self.W7_71, self.W7_72,
+               self.W7_73, self.W7_74, self.W7_75, self.W7_76, self.W7_77, self.W7_78,
+               self.W7_79, self.W7_80, self.W7_81, self.W7_82, self.W7_83, self.W7_84,
+               self.W7_85, self.W7_86, self.W7_87, self.W7_88, self.W7_89, self.W7_90,
+               self.W7_91, self.W7_92, self.W7_93, self.W7_94, self.W7_95, self.W7_96,
+               self.W7_97, self.W7_98, self.W7_99, self.W7_100, self.W7_101, self.W7_102,
+               self.W7_103, self.W7_104, self.W7_105, self.W7_106, self.W7_107, self.W7_108]
+        
+        ## Return operators
+        if not vals:
+            return w7s
+        
+        # Check to see that all parameters are given
+        assert theta is not None, "ERROR: theta not given"
+        assert alpha is not None, "ERROR: alpha not given"
+        assert beta is not None, "ERROR: beta not given"
+        assert gamma is not None, "ERROR: gamma not given"
+
+        # Get the W8 operators for the given parameters
+        for i, W in enumerate(w7s):
+            # every 3rd witness needs gamma
+            if i % 3 == 2:
+                w7s[i] = W(theta, alpha, beta, gamma)
+            else:
+                w7s[i] = W(theta, alpha, beta)
+        
+        # Calculate the expectation values
+        values = []
+        for w in w7s:
+            values += [np.trace(w @ self.rho).real]
+        return values
     
 
 # Wrapper class that includes all witnesses from Pacos' Rotations
