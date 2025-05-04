@@ -126,9 +126,9 @@ def R_y(theta):
                     [np.sin(theta/2), (np.cos(theta/2))]])
 
 
-###########################
-## ENTANGLEMENT WITNESSES
-###########################
+##########################################
+##        ENTANGLEMENT WITNESSES        ## 
+##########################################
 
 ## Keep track of count indices
 # int to str, i.e. COUNT[0] = 'HH'
@@ -143,7 +143,7 @@ class W3:
     W3 (Riccardi) witnesses. These use local measurements on 3 Pauli bases.
 
     Attributes: 
-    rho (optional)    - the density matrix for the entangled photon state
+    rho (optional)    - the density matrix for the 2-photon state
     counts (optional) - np array of photon counts and uncertainties from experimental data
 
     NOTE: One of rho or counts must be given
@@ -476,11 +476,11 @@ class W3:
 
 class W5(W3):
     """
-    W5 witnesses, calculated with Paco's rotations.
+    W5 witnesses, calculated with Paco's rotations (section 3.4.2 of Navarro thesis).
     These use local measurements on 5 Pauli bases.
 
     Attributes:
-    rho (optional)    - the density matrix for the entangled photon state
+    rho (optional)    - the density matrix for the 2-photon state
     counts (optional) - np array of photon counts and uncertainties from experimental data
         
     NOTE: this class inherits from W3, so all methods in that class can be used here, and all notes apply
@@ -490,7 +490,15 @@ class W5(W3):
 
     ## Triplet 1: Rotate about z ##
     def W5_1(self, theta, alpha):
-        w1 = super().W3_1(theta)
+        """
+        First W5 witness, rotates particle 1 about the z-axis
+        from the W3_1 witness
+
+        Params:
+        theta - free parameter used in W3_1
+        alpha - rotation angle
+        """
+        w1 = self.W3_1(theta)
         
         if self.counts:
             W5.check_counts(self, triplet=1)
@@ -499,7 +507,7 @@ class W5(W3):
         return op.rotate_m(w1, rotation)
     
     def W5_2(self, theta, alpha):
-        w2 = super().W3_2(theta)
+        w2 = self.W3_2(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=1)
@@ -508,7 +516,7 @@ class W5(W3):
         return op.rotate_m(w2, rotation)
     
     def W5_3(self, theta, alpha, beta):
-        w3 = super().W3_3(theta)
+        w3 = self.W3_3(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=1)
@@ -519,7 +527,7 @@ class W5(W3):
 
     ## Triplet 2: Rotate about x ##
     def W5_4(self, theta, alpha):
-        w3 = super().W3_3(theta)
+        w3 = self.W3_3(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=2)
@@ -528,7 +536,7 @@ class W5(W3):
         return op.rotate_m(w3, rotation)
     
     def W5_5(self, theta, alpha):
-        w4 = super().W3_4(theta)
+        w4 = self.W3_4(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=2)
@@ -537,7 +545,7 @@ class W5(W3):
         return op.rotate_m(w4, rotation)
     
     def W5_6(self, theta, alpha, beta):
-        w1 = super().W3_1(theta)
+        w1 = self.W3_1(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=2)
@@ -548,7 +556,7 @@ class W5(W3):
     
     ## Triplet 3: Rotate about y ##
     def W5_7(self, theta, alpha):
-        w5 = super().W3_5(theta)
+        w5 = self.W3_5(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=3)
@@ -557,7 +565,7 @@ class W5(W3):
         return op.rotate_m(w5, rotation)
     
     def W5_8(self, theta, alpha):
-        w6 = super().W3_6(theta)
+        w6 = self.W3_6(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=3)
@@ -566,7 +574,7 @@ class W5(W3):
         return op.rotate_m(w6, rotation)
 
     def W5_9(self, theta, alpha, beta):
-        w1 = super().W3_1(theta)
+        w1 = self.W3_1(theta)
 
         if self.counts:
             W5.check_counts(self, triplet=3)
@@ -633,11 +641,11 @@ class W5(W3):
 
 class W8(W5):
     """
-    W8 witnesses, calculated with Paco's rotations.
+    W8 witnesses, calculated with Paco's rotations (section 4.1 of Navarro thesis).
     These use local measurements on 8 Pauli bases.
 
     Attributes:
-    rho (optional)    - the density matrix for the entangled photon state
+    rho (optional)    - the density matrix for the 2-photon state
     counts (optional) - np array of photon counts and uncertainties from experimental data
         
     NOTE: this class inherits from W5, so all methods in that class can be used here, and all notes apply
@@ -645,29 +653,37 @@ class W8(W5):
     def __init__(self, rho=None, counts=None):
         super().__init__(rho=rho, counts=counts)
 
-    ## Triplet 1: Rotate particle 1 on y then x ##
-    def W8_1(self, theta, alpha, beta):
-        w5_7 = super().W5_7(theta, alpha)
 
-        if self.counts:
+    ######################################################
+    ## SET 1 (W8_{1-6}): EXCLUDES XY MEASUREMENT
+    ######################################################
+    
+    ## Triplet 1: Rotate particle 1 on y then x ##
+    def W8_1(self, theta, alpha, beta, for_w7=False):
+        """
+        First W8 witness
+        """
+        w5_7 = self.W5_7(theta, alpha)
+
+        if self.counts and not for_w7:
             W8.check_counts(triplet=1)
 
         rotation = np.kron(R_x(beta), IDENTITY)
         return op.rotate_m(w5_7, rotation)
     
-    def W8_2(self, theta, alpha, beta):
-        w5_8 = super().W5_8(theta, alpha)
+    def W8_2(self, theta, alpha, beta, for_w7=False):
+        w5_8 = self.W5_8(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=1)
         
         rotation = np.kron(R_x(beta), IDENTITY)
         return op.rotate_m(w5_8, rotation)
     
-    def W8_3(self, theta, alpha, beta, gamma):
-        w5_9 = super().W5_9(theta, alpha, beta)
+    def W8_3(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_9 = self.W5_9(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=1)
         
         rotation = np.kron(R_x(gamma), IDENTITY)
@@ -675,57 +691,61 @@ class W8(W5):
     
 
     ## Triplet 2: Rotate about x, then rotate particle 2 about y ##
-    def W8_4(self, theta, alpha, beta):
-        w5_4 = super().W5_4(theta, alpha)
+    def W8_4(self, theta, alpha, beta, for_w7=False):
+        w5_4 = self.W5_4(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=2)
         
         rotation = np.kron(IDENTITY, R_y(beta))
         return op.rotate_m(w5_4, rotation)
     
-    def W8_5(self, theta, alpha, beta):
-        w5_5 = super().W5_5(theta, alpha)
+    def W8_5(self, theta, alpha, beta, for_w7=False):
+        w5_5 = self.W5_5(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=2)
         
         rotation = np.kron(IDENTITY, R_y(beta))
         return op.rotate_m(w5_5, rotation)
     
-    def W8_6(self, theta, alpha, beta, gamma):
-        w5_6 = super().W5_6(theta, alpha, beta)
+    def W8_6(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_6 = self.W5_6(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=2)
         
         rotation = np.kron(IDENTITY, R_y(gamma))
         return op.rotate_m(w5_6, rotation)
     
 
-    ## Triplet 3: Rotate particle 1 on x then y ##
-    def W8_7(self, theta, alpha, beta):
-        w5_4 = super().W5_4(theta, alpha)
+    #############################################
+    ## SET 2: EXCLUDES YX
+    #############################################
 
-        if self.counts:
+    ## Triplet 3: Rotate particle 1 on x then y ##
+    def W8_7(self, theta, alpha, beta, for_w7=False):
+        w5_4 = self.W5_4(theta, alpha)
+
+        if self.counts and not for_w7:
             W8.check_counts(triplet=3)
 
         rotation = np.kron(R_y(beta), IDENTITY)
         return op.rotate_m(w5_4, rotation)
     
-    def W8_8(self, theta, alpha, beta):
-        w5_5 = super().W5_5(theta, alpha)
+    def W8_8(self, theta, alpha, beta, for_w7=False):
+        w5_5 = self.W5_5(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=3)
 
         rotation = np.kron(R_y(beta), IDENTITY)
         return op.rotate_m(w5_5, rotation)
     
-    def W8_9(self, theta, alpha, beta, gamma):
-        w5_6 = super().W5_6(theta, alpha, beta)
+    def W8_9(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_6 = self.W5_6(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=3)
 
         rotation = np.kron(R_y(gamma), IDENTITY)
@@ -733,57 +753,60 @@ class W8(W5):
     
 
     ## Triplet 4: Rotate about y, then rotate particle 2 about x ##
-    def W8_10(self, theta, alpha, beta):
-        w5_7 = super().W5_7(theta, alpha)
+    def W8_10(self, theta, alpha, beta, for_w7=False):
+        w5_7 = self.W5_7(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=4)
 
         rotation = np.kron(IDENTITY, R_x(beta))
         return op.rotate_m(w5_7, rotation)
     
-    def W8_11(self, theta, alpha, beta):
-        w5_8 = super().W5_8(theta, alpha)
+    def W8_11(self, theta, alpha, beta, for_w7=False):
+        w5_8 = self.W5_8(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=4)
 
         rotation = np.kron(IDENTITY, R_x(beta))
         return op.rotate_m(w5_8, rotation)
     
-    def W8_12(self, theta, alpha, beta, gamma):
-        w5_9 = super().W5_9(theta, alpha, beta)
+    def W8_12(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_9 = self.W5_9(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=4)
 
         rotation = np.kron(IDENTITY, R_x(gamma))
         return op.rotate_m(w5_9, rotation)
     
+    #############################################
+    ## SET 3: EXCLUDES XZ
+    #############################################
 
     ## Triplet 5: Rotate particle 1 by z then x ##
-    def W8_13(self, theta, alpha, beta):
-        w5_1 = super().W5_1(theta, alpha)
+    def W8_13(self, theta, alpha, beta, for_w7=False):
+        w5_1 = self.W5_1(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=5)
 
         rotation = np.kron(R_x(beta), IDENTITY)
         return op.rotate_m(w5_1, rotation)
     
-    def W8_14(self, theta, alpha, beta):
-        w5_2 = super().W5_2(theta, alpha)
+    def W8_14(self, theta, alpha, beta, for_w7=False):
+        w5_2 = self.W5_2(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=5)
 
         rotation = np.kron(R_x(beta), IDENTITY)
         return op.rotate_m(w5_2, rotation)
     
-    def W8_15(self, theta, alpha, beta, gamma):
-        w5_3 = super().W5_3(theta, alpha, beta)
+    def W8_15(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_3 = self.W5_3(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=5)
 
         rotation = np.kron(R_x(gamma), IDENTITY)
@@ -791,57 +814,61 @@ class W8(W5):
     
 
     ## Triplet 6: Rotate about x, then rotate particle 2 by z ##
-    def W8_16(self, theta, alpha, beta):
-        w5_4 = super().W5_4(theta, alpha)
+    def W8_16(self, theta, alpha, beta, for_w7=False):
+        w5_4 = self.W5_4(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=6)
 
         rotation = np.kron(IDENTITY, R_z(beta))
         return op.rotate_m(w5_4, rotation)
     
-    def W8_17(self, theta, alpha, beta):
-        w5_5 = super().W5_5(theta, alpha)
+    def W8_17(self, theta, alpha, beta, for_w7=False):
+        w5_5 = self.W5_5(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=6)
 
         rotation = np.kron(IDENTITY, R_z(beta))
         return op.rotate_m(w5_5, rotation)
     
-    def W8_18(self, theta, alpha, beta, gamma):
-        w5_6 = super().W5_6(theta, alpha, beta)
+    def W8_18(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_6 = self.W5_6(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=6)
 
         rotation = np.kron(IDENTITY, R_z(gamma))
         return op.rotate_m(w5_6, rotation)
     
 
-    ## Triplet 7: Rotate particle 1 by x then z ##
-    def W8_19(self, theta, alpha, beta):
-        w5_4 = super().W5_4(theta, alpha)
+    #############################################
+    ## SET 4: EXCLUDES ZX
+    #############################################
 
-        if self.counts:
+    ## Triplet 7: Rotate particle 1 by x then z ##
+    def W8_19(self, theta, alpha, beta, for_w7=False):
+        w5_4 = self.W5_4(theta, alpha)
+
+        if self.counts and not for_w7:
             W8.check_counts(triplet=7)
 
         rotation = np.kron(R_z(beta), IDENTITY)
         return op.rotate_m(w5_4, rotation)
     
-    def W8_20(self, theta, alpha, beta):
-        w5_5 = super().W5_5(theta, alpha)
+    def W8_20(self, theta, alpha, beta, for_w7=False):
+        w5_5 = self.W5_5(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=7)
 
         rotation = np.kron(R_z(beta), IDENTITY)
         return op.rotate_m(w5_5, rotation)
     
-    def W8_21(self, theta, alpha, beta, gamma):
-        w5_6 = super().W5_6(theta, alpha, beta)
+    def W8_21(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_6 = self.W5_6(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=7)
 
         rotation = np.kron(R_z(gamma), IDENTITY)
@@ -849,57 +876,61 @@ class W8(W5):
     
 
     ## Triplet 8: Rotate about z, then rotate particle 2 by x ##
-    def W8_22(self, theta, alpha, beta):
-        w5_1 = super().W5_1(theta, alpha)
+    def W8_22(self, theta, alpha, beta, for_w7=False):
+        w5_1 = self.W5_1(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=8)
 
         rotation = np.kron(IDENTITY, R_x(beta))
         return op.rotate_m(w5_1, rotation)
     
-    def W8_23(self, theta, alpha, beta):
-        w5_2 = super().W5_2(theta, alpha)
+    def W8_23(self, theta, alpha, beta, for_w7=False):
+        w5_2 = self.W5_2(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=8)
 
         rotation = np.kron(IDENTITY, R_x(beta))
         return op.rotate_m(w5_2, rotation)
     
-    def W8_24(self, theta, alpha, beta, gamma):
-        w5_3 = super().W5_3(theta, alpha, beta)
+    def W8_24(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_3 = self.W5_3(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=8)
 
         rotation = np.kron(IDENTITY, R_x(gamma))
         return op.rotate_m(w5_3, rotation)
     
     
-    ## Triplet 9: Rotate particle 1 by z then y ##
-    def W8_25(self, theta, alpha, beta):
-        w5_1 = super().W5_1(theta, alpha)
+    #############################################
+    ## SET 5: EXCLUDES YZ
+    #############################################
 
-        if self.counts:
+    ## Triplet 9: Rotate particle 1 by z then y ##
+    def W8_25(self, theta, alpha, beta, for_w7=False):
+        w5_1 = self.W5_1(theta, alpha)
+
+        if self.counts and not for_w7:
             W8.check_counts(triplet=9)
 
         rotation = np.kron(R_y(beta), IDENTITY)
         return op.rotate_m(w5_1, rotation)
     
-    def W8_26(self, theta, alpha, beta):
-        w5_2 = super().W5_2(theta, alpha)
+    def W8_26(self, theta, alpha, beta, for_w7=False):
+        w5_2 = self.W5_2(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=9)
 
         rotation = np.kron(R_y(beta), IDENTITY)
         return op.rotate_m(w5_2, rotation)
     
-    def W8_27(self, theta, alpha, beta, gamma):
-        w5_3 = super().W5_3(theta, alpha, beta)
+    def W8_27(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_3 = self.W5_3(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=9)
 
         rotation = np.kron(R_y(gamma), IDENTITY)
@@ -907,57 +938,61 @@ class W8(W5):
     
 
     ## Triplet 10: Rotate about y, then rotate particle 2 by z ##
-    def W8_28(self, theta, alpha, beta):
-        w5_7 = super().W5_7(theta, alpha)
+    def W8_28(self, theta, alpha, beta, for_w7=False):
+        w5_7 = self.W5_7(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=10)
 
         rotation = np.kron(IDENTITY, R_z(beta))
         return op.rotate_m(w5_7, rotation)
     
-    def W8_29(self, theta, alpha, beta):
-        w5_8 = super().W5_8(theta, alpha)
+    def W8_29(self, theta, alpha, beta, for_w7=False):
+        w5_8 = self.W5_8(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=10)
 
         rotation = np.kron(IDENTITY, R_z(beta))
         return op.rotate_m(w5_8, rotation)
     
-    def W8_30(self, theta, alpha, beta, gamma):
-        w5_9 = super().W5_9(theta, alpha, beta)
+    def W8_30(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_9 = self.W5_9(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=10)
 
         rotation = np.kron(IDENTITY, R_z(gamma))
         return op.rotate_m(w5_9, rotation)
     
-    
-    ## Triplet 11: Rotate particle 1 by y then z ##
-    def W8_31(self, theta, alpha, beta):
-        w5_7 = super().W5_7(theta, alpha)
 
-        if self.counts:
+    #############################################
+    ## SET 6: EXCLUDES ZY
+    #############################################
+
+    ## Triplet 11: Rotate particle 1 by y then z ##
+    def W8_31(self, theta, alpha, beta, for_w7=False):
+        w5_7 = self.W5_7(theta, alpha)
+
+        if self.counts and not for_w7:
             W8.check_counts(triplet=11)
 
         rotation = np.kron(R_z(beta), IDENTITY)
         return op.rotate_m(w5_7, rotation)
     
-    def W8_32(self, theta, alpha, beta):
-        w5_8 = super().W5_8(theta, alpha)
+    def W8_32(self, theta, alpha, beta, for_w7=False):
+        w5_8 = self.W5_8(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=11)
 
         rotation = np.kron(R_z(beta), IDENTITY)
         return op.rotate_m(w5_8, rotation)
     
-    def W8_33(self, theta, alpha, beta, gamma):
-        w5_9 = super().W5_9(theta, alpha, beta)
+    def W8_33(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_9 = self.W5_9(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=11)
 
         rotation = np.kron(R_z(gamma), IDENTITY)
@@ -965,28 +1000,28 @@ class W8(W5):
     
 
     ## Triplet 12: Rotate about z, then rotate particle 2 by y ##
-    def W8_34(self, theta, alpha, beta):
-        w5_1 = super().W5_1(theta, alpha)
+    def W8_34(self, theta, alpha, beta, for_w7=False):
+        w5_1 = self.W5_1(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=12)
 
         rotation = np.kron(IDENTITY, R_y(beta))
         return op.rotate_m(w5_1, rotation)
     
-    def W8_35(self, theta, alpha, beta):
-        w5_2 = super().W5_2(theta, alpha)
+    def W8_35(self, theta, alpha, beta, for_w7=False):
+        w5_2 = self.W5_2(theta, alpha)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=12)
 
         rotation = np.kron(IDENTITY, R_y(beta))
         return op.rotate_m(w5_2, rotation)
     
-    def W8_36(self, theta, alpha, beta, gamma):
-        w5_3 = super().W5_3(theta, alpha, beta)
+    def W8_36(self, theta, alpha, beta, gamma, for_w7=False):
+        w5_3 = self.W5_3(theta, alpha, beta)
 
-        if self.counts:
+        if self.counts and not for_w7:
             W8.check_counts(triplet=12)
 
         rotation = np.kron(IDENTITY, R_y(gamma))
@@ -1138,15 +1173,31 @@ class W8(W5):
             assert False, "Invalid triplet specified"
 
 
-
 class W7(W8):
+    """
+    W7 witnesses, calculated with Paco's rotations (section 4.2 of Navarro thesis).
+    These use local measurements on 7 Pauli bases.
+
+    Attributes:
+    rho (optional)    - the density matrix for the photon state
+    counts (optional) - np array of photon counts and uncertainties from experimental data
+        
+    NOTE: this class inherits from W8, so all methods in that class can be used here, and all notes apply
+    """
     def __init__(self, rho=None, counts=None):
         super().__init__(rho=rho, counts=counts)
 
+    
+    #############################################
+    ## SET 1 (W7_{1-12}): EXCLUDES XY & YX
+    #############################################
+
+    # Triplet 1: deletion rotation about y on particle 2
     def W7_1(self, theta, alpha, beta):
-        # 1) Extract coefficients
-        # 2) Calculate GAMMA (function of prev angles, so no new free params)
-        # 3) Rotate by GAMMA 
+        # deletion rotation angle (defined as gamma in Paco's thesis)
+        delta = np.arctan(-1/np.tan(alpha))
+
+
 
         return
     
