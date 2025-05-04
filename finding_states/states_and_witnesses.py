@@ -199,6 +199,8 @@ class W3:
 
         Params:
         theta - the parameter for the rank-1 projector
+
+        NOTE: this returns the operator, not an expectation value
         """
         a = np.cos(theta)
         b = np.sin(theta)
@@ -206,8 +208,7 @@ class W3:
         # For experimental data, ensure we have the necessary counts
         if self.counts:
             W3.check_counts(self)
-        
-        # W1 as a matrix (for when we use full tomography & thus have a rho)
+
         phi1 = a*PHI_P + b*PHI_M
         return op.partial_transpose(phi1 * op.adjoint(phi1))
         
@@ -498,11 +499,13 @@ class W5(W3):
         theta - free parameter used in W3_1
         alpha - rotation angle
         """
+        # W3 witness to rotate from
         w1 = self.W3_1(theta)
         
         if self.counts:
             W5.check_counts(self, triplet=1)
 
+        # Create appropriate rotation matrix and apply it to the W3 witness
         rotation = np.kron(R_z(alpha), IDENTITY)
         return op.rotate_m(w1, rotation)
     
@@ -662,7 +665,19 @@ class W8(W5):
     def W8_1(self, theta, alpha, beta, for_w7=False):
         """
         First W8 witness
+
+        Params:
+        theta             - free parameter used in W3
+        alpha             - first rotation angle (for W5)
+        beta              - second rotation angle (to go from W5 to W8)
+        for_w7 (optional) - if true, don't check the counts assuming 
+                            we're using experimental data
+
+        NOTE: We may calculate W8 in order to perform another rotation to
+              get a W7 witness. In this case, we don't want to check the counts
+              because using a W7 requires less photon counts than a W8
         """
+        # W5 witness to rotate from
         w5_7 = self.W5_7(theta, alpha)
 
         if self.counts and not for_w7:
@@ -1139,6 +1154,7 @@ class W8(W5):
             self.check_yz(quiet=True)
             self.check_xz(quiet=True)
         
+
         ## Triplets 9-10 exclude yz ##
         elif triplet == 9:
             # Rotation from 1st W5 triplet
@@ -1154,6 +1170,7 @@ class W8(W5):
             self.check_yx(quiet=True)
             self.check_zy(quiet=True)
         
+
         ## Triplets 11-12 exclude zy ##
         elif triplet == 11:
             # Rotation from 3rd W5 triplet
@@ -1192,14 +1209,468 @@ class W7(W8):
     ## SET 1 (W7_{1-12}): EXCLUDES XY & YX
     #############################################
 
-    # Triplet 1: deletion rotation about y on particle 2
+    ## Triplet 1: deletion rotation about y on particle 2 from first W8 triplet ##
     def W7_1(self, theta, alpha, beta):
+        """
+        First W8 witness
+
+        Params:
+        theta - free parameter used in W3
+        alpha - first rotation angle (for W5)
+        beta  - second rotation angle (for W8)
+        """
         # deletion rotation angle (defined as gamma in Paco's thesis)
         delta = np.arctan(-1/np.tan(alpha))
 
+        # W8 witness to rotate from
+        w8 = self.W8_1(theta, alpha, beta, for_w7=True)
 
+        if self.counts:
+            W7.check_counts(set=1)
 
-        return
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_2(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_2(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_3(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_3(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+
+    ## Triplet 2: deletion rotation by x on particle 1 from 2nd W8 triplet ##
+    def W7_4(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_4(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(R_x(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_5(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_5(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(R_x(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_6(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_6(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(R_x(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+
+    ## Triplet 3: rotate by x on particle 2 from 3rd W8 triplet ##
+    def W7_7(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_7(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_8(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_8(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_9(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_9(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    ## Triplet 4: rotate by y on particle 1 from 4th W8 triplet ##
+    def W7_10(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_10(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_11(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_11(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_12(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_12(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=1)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+
+    #####################################
+    ## SET 2: EXCLUDES XY & YZ
+    #####################################
+
+    ## Triplets 5-6: rotate by y on particle 2 from 1st & 2nd W8 triplets, respectively ##
+    def W7_13(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_1(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_14(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_2(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_15(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_3(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_16(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_4(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_17(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_5(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_18(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_6(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    
+    ## Triplets 7-8: rotate by y on particle 1 from 9th & 10th W8 triplets ##
+    def W7_19(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_25(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_20(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_26(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_21(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_27(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_22(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_28(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_23(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_29(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_24(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_30(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=2)
+
+        rotation = np.kron(R_y(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    
+    #####################################
+    ## SET 3: EXCLUDES XY & ZX
+    #####################################
+
+    ## Triplets 9-10: rotate by x on particle 1 from 1st & 2nd W8 triplets ##
+    def W7_25(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_1(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(R_x(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_26(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_2(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_27(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_3(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_28(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_4(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_29(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_5(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_30(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_6(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+
+    ## Triplets 11-12: rotate by x on particle 2 from 7th & 8th W8 triplets ##
+    def W7_31(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_19(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_32(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_20(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_33(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_21(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_34(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_22(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_35(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_23(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_36(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_24(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=3)
+
+        rotation = np.kron(IDENTITY, R_x(delta))
+        return op.rotate_m(w8, rotation)
+    
+
+    #####################################
+    ## SET 4: EXCLUDES XZ & ZX
+    #####################################
+
+    ## Triplets 13-14: rotate by x on particle 1 from 5th & 6th W8 triplets ##
+    def W7_37(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_13(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=4)
+
+        rotation = np.kron(R_x(delta), IDENTITY)
+        return op.rotate_m(w8, rotation)
+    
+    def W7_38(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_14(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=4)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_39(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_15(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=4)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_40(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_16(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=4)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_41(self, theta, alpha, beta):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_17(theta, alpha, beta, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=4)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+    def W7_42(self, theta, alpha, beta, gamma):
+        delta = np.arctan(-1/np.tan(alpha))
+        w8 = self.W8_18(theta, alpha, beta, gamma, for_w7=True)
+
+        if self.counts:
+            W7.check_counts(set=4)
+
+        rotation = np.kron(IDENTITY, R_y(delta))
+        return op.rotate_m(w8, rotation)
+    
+
+    ## Triplets 15-16: rotate by x on particle 2 from 7th & 8th W8 triplets ##
+    # NOTE: THIS IS THE SAME AS TRIPLETS 11-12, CHECK IN W PACO TO MAKE SURE THIS IS RIGHT
     
 
 # Wrapper class that includes all witnesses from Pacos' Rotations
