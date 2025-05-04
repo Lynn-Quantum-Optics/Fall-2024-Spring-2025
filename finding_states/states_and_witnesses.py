@@ -1741,8 +1741,35 @@ class W7(W8):
         return values
     
 
-# Wrapper class that includes all witnesses from Pacos' Rotations
-NavarroWitness = W7
+
+class NavarroWitness(W7):
+    """
+    All witnesses defined in Paco's thesis (i.e. W3, W5, W7, and W8)
+
+    This class doesn't define any new witnesses, but just overrides
+    the get_witness function to include all witnesses
+
+    NOTE: all functions defined in W3, W5, W7, and W8 work here
+    """
+    def __init__(self, rho=None, counts=None):
+        super().__init__(rho=rho, counts=counts)
+
+    def get_witnesses(self, vals=False, theta=None, alpha=None, beta=None, gamma=None):
+        """
+        Returns either all witnesses as operators or the expectation values 
+        of the witnesses with given parameters
+
+        NOTE: theta, alpha, beta, gamma must be given when vals is True
+        NOTE: Works the same as the get_witnesses function from W3, see docstring from that
+              function for more details
+        """
+
+        # TODO: Implementation of W7s needs to be finished before this works
+        return (W3.get_witnesses(self, vals, theta) + 
+                W5.get_witnesses(self, vals, theta, alpha, beta) +
+                W7.get_witnesses(self, vals, theta, alpha, beta, gamma) + 
+                W8.get_witnesses(self, vals, theta, alpha, beta, gamma))
+
 
 if __name__ == '__main__':
     print("States, Matrices, and Witnesses Loaded.")
