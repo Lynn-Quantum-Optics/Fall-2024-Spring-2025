@@ -334,6 +334,12 @@ def compute_witnesses(rho, counts = None, expt = False, verbose = True, do_count
 
     # Using theoretical data
     else: # use operators instead like in eritas's matlab code
+        # bell states
+        PHI_P = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)]).reshape((4,1))
+        PHI_M = np.array([1/np.sqrt(2), 0, 0, -1/np.sqrt(2)]).reshape((4,1))
+        PSI_P = np.array([0, 1/np.sqrt(2),  1/np.sqrt(2), 0]).reshape((4,1))
+        PSI_M = np.array([0, 1/np.sqrt(2),  -1/np.sqrt(2), 0]).reshape((4,1))
+        
         # column vectors
         HH = np.array([1, 0, 0, 0]).reshape((4,1))
         HV = np.array([0, 1, 0, 0]).reshape((4,1))
